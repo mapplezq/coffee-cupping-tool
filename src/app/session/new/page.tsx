@@ -81,14 +81,14 @@ export default function NewSessionPage() {
           <Link href="/" className="p-2 hover:bg-gray-100 rounded-full transition-colors">
             <ArrowLeft className="w-5 h-5 text-gray-600" />
           </Link>
-          <h1 className="text-2xl font-bold text-gray-900">新建杯测会话</h1>
+          <h1 className="text-2xl font-bold text-gray-900">新建杯测活动</h1>
         </div>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
           
           {/* Basic Info */}
           <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 space-y-6">
-            <h2 className="text-lg font-semibold text-gray-900 border-b pb-2">会话详情</h2>
+            <h2 className="text-lg font-semibold text-gray-900 border-b pb-2">活动详情</h2>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
@@ -190,7 +190,7 @@ export default function NewSessionPage() {
               className="flex items-center gap-2 bg-amber-700 hover:bg-amber-800 text-white px-8 py-3 rounded-lg font-medium shadow-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Save className="w-4 h-4" />
-              {isSubmitting ? '创建中...' : '创建会话'}
+              {isSubmitting ? '创建中...' : '创建活动'}
             </button>
           </div>
 

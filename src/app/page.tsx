@@ -52,12 +52,12 @@ export default function Home() {
               <Settings className="w-5 h-5" />
             </button>
             <Link 
-              href="/session/new" 
-              className="flex items-center gap-2 bg-amber-700 hover:bg-amber-800 text-white px-4 py-2 rounded-lg transition-colors"
-            >
-              <Plus className="w-4 h-4" />
-              <span>新建会话</span>
-            </Link>
+            href="/session/new" 
+            className="flex items-center gap-2 bg-amber-700 hover:bg-amber-800 text-white px-4 py-2 rounded-lg transition-colors"
+          >
+            <Plus className="w-4 h-4" />
+            <span>新建杯测</span>
+          </Link>
           </div>
         </header>
 
@@ -66,14 +66,14 @@ export default function Home() {
           <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
             <div className="flex items-center gap-2 text-gray-500 mb-2">
               <BarChart3 className="w-4 h-4" />
-              <span className="text-xs font-medium uppercase">总会话数</span>
+              <span className="text-xs font-medium uppercase">总杯测活动</span>
             </div>
             <div className="text-2xl font-bold text-gray-900">{totalSessions}</div>
           </div>
           <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
             <div className="flex items-center gap-2 text-gray-500 mb-2">
               <Calendar className="w-4 h-4" />
-              <span className="text-xs font-medium uppercase">本月会话</span>
+              <span className="text-xs font-medium uppercase">本月杯测</span>
             </div>
             <div className="text-2xl font-bold text-gray-900">{thisMonthSessions}</div>
           </div>
@@ -81,11 +81,11 @@ export default function Home() {
 
         {/* Session List */}
         <div>
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">最近会话</h2>
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">最近杯测活动</h2>
           {sessions.length === 0 ? (
             <div className="text-center py-12 bg-white rounded-xl border border-dashed border-gray-200">
               <Coffee className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-              <p className="text-gray-500">暂无会话，请点击新建开始！</p>
+              <p className="text-gray-500">暂无杯测活动，请点击新建开始！</p>
             </div>
           ) : (
             <div className="space-y-4">

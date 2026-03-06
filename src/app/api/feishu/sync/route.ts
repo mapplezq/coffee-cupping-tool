@@ -13,7 +13,7 @@ export async function POST(request: Request) {
     const records = (session as SessionWithSamples).samples.map(sample => {
       const score = sample.score;
       return {
-        "杯测活动": session.name, // Mapped to session name (was "批次号")
+        "杯测名称": session.name, // Mapped to session name (was "杯测活动")
         "杯测日期": new Date(session.cuppingDate).getTime(), // Feishu date format usually timestamp
         "烘焙日期": sample.roastDate ? new Date(sample.roastDate).getTime() : null, // From sample
         "样品名称": sample.name,
