@@ -15,7 +15,7 @@ const sampleSchema = z.object({
   name: z.string().min(1, "样品名称必填"),
   origin: z.string().min(1, "产地必填"),
   process: z.string().min(1, "处理法必填"),
-  type: z.enum(['pre_shipment', 'processing', 'arrival', 'sales', 'self_drawn', 'other']).default('pre_shipment'),
+  type: z.enum(['pre_shipment', 'processing', 'arrival', 'sales', 'self_drawn', 'other']),
 });
 
 const sessionSchema = z.object({
