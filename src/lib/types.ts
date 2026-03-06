@@ -14,8 +14,32 @@ export interface Sample {
   name: string
   origin: string
   process: string
-  roastDate: string // roastDate added to sample
+  // roastDate removed from sample
+  type?: 'pre_shipment' | 'processing' | 'arrival' | 'sales' | 'self_drawn' | 'other'
   createdAt: string
+}
+
+export interface GlobalSample {
+  id: string;
+  name: string;
+  origin: string;
+  process: string;
+  // roastDate removed from global sample
+  type: 'pre_shipment' | 'processing' | 'arrival' | 'sales' | 'self_drawn' | 'other';
+  // Extended fields
+  variety?: string;       // 豆种
+  defectRate?: string;    // 瑕疵率
+  moisture?: string;      // 水分
+  waterActivity?: string; // 水活性
+  screenSize?: string;    // 目数
+  cropYear?: string;      // 产季
+  supplier?: string;      // 提供商
+  
+  createdAt: string;
+  updatedAt?: string;
+  status?: 'active' | 'archived'; // For soft delete or hiding
+  syncStatus?: 'synced' | 'pending';
+  feishuRecordId?: string;
 }
 
 export interface CuppingScore {

@@ -35,7 +35,7 @@ export default function SessionDetailPage() {
         name: s.name,
         origin: s.origin,
         process: s.process,
-        roastDate: s.roastDate
+        type: s.type
       }))
     };
     // Use UTF-8 safe encoding
@@ -266,8 +266,18 @@ export default function SessionDetailPage() {
                        <span className="font-medium text-gray-900">{activeSample.process}</span>
                      </div>
                      <div>
-                       <span className="text-gray-500 block">烘焙日期</span>
-                       <span className="font-medium text-gray-900">{activeSample.roastDate ? new Date(activeSample.roastDate).toLocaleDateString() : '-'}</span>
+                       <span className="text-gray-500 block">样品类型</span>
+                       <span className="font-medium text-gray-900">
+                        {
+                          activeSample.type === 'pre_shipment' ? '货前样' :
+                          activeSample.type === 'processing' ? '加工样' :
+                          activeSample.type === 'arrival' ? '到货样' :
+                          activeSample.type === 'sales' ? '可销售样' :
+                          activeSample.type === 'self_drawn' ? '自抽样' :
+                          activeSample.type === 'other' ? '其他' : 
+                          activeSample.type || '-'
+                        }
+                       </span>
                      </div>
                    </div>
                  </div>

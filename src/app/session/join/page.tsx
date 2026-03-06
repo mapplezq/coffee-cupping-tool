@@ -56,7 +56,7 @@ function JoinSessionContent() {
           name: s.name,
           origin: s.origin,
           process: s.process,
-          roastDate: s.roastDate,
+          type: s.type || 'pre_shipment',
           createdAt: new Date().toISOString(),
           // Don't copy scores
         })),

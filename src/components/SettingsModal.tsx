@@ -15,6 +15,7 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
     appSecret: '',
     appToken: '',
     tableId: '',
+    sampleTableId: '',
     cupperName: '', // Added cupperName
   });
   const [testStatus, setTestStatus] = useState<'idle' | 'testing' | 'success' | 'error'>('idle');
@@ -153,6 +154,16 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                   onChange={(e) => setConfig({ ...config, tableId: e.target.value })}
                   className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 outline-none font-mono text-sm"
                   placeholder="tbl..."
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-sm font-medium text-gray-700">样品表 ID (sampleTableId)</label>
+                <input
+                  type="text"
+                  value={config.sampleTableId}
+                  onChange={(e) => setConfig({ ...config, sampleTableId: e.target.value })}
+                  className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 outline-none font-mono text-sm"
+                  placeholder="tbl... (可选)"
                 />
               </div>
             </div>

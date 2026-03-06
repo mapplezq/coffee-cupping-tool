@@ -15,7 +15,12 @@ export async function POST(request: Request) {
       return {
         "杯测名称": session.name, // Mapped to session name (was "杯测活动")
         "杯测日期": new Date(session.cuppingDate).getTime(), // Feishu date format usually timestamp
-        "烘焙日期": sample.roastDate ? new Date(sample.roastDate).getTime() : null, // From sample
+        "样品类型": sample.type === 'pre_shipment' ? '货前样' :
+                   sample.type === 'processing' ? '加工样' :
+                   sample.type === 'arrival' ? '到货样' :
+                   sample.type === 'sales' ? '可销售样' :
+                   sample.type === 'self_drawn' ? '自抽样' :
+                   sample.type === 'other' ? '其他' : sample.type || '',
         "样品名称": sample.name,
         "产地": sample.origin,
         "处理方式": sample.process,

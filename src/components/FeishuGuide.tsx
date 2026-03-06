@@ -78,7 +78,7 @@ export default function FeishuGuide() {
                 <tbody>
                   <tr><td className="border p-2">杯测名称</td><td className="border p-2">单行文本</td></tr>
                   <tr><td className="border p-2">杯测日期</td><td className="border p-2">日期</td></tr>
-                  <tr><td className="border p-2">烘焙日期</td><td className="border p-2">日期</td></tr>
+                  <tr><td className="border p-2">样品类型</td><td className="border p-2">单行文本</td></tr>
                   <tr><td className="border p-2">样品名称</td><td className="border p-2">单行文本</td></tr>
                   <tr><td className="border p-2">产地</td><td className="border p-2">单行文本</td></tr>
                   <tr><td className="border p-2">处理方式</td><td className="border p-2">单行文本</td></tr>
@@ -95,6 +95,32 @@ export default function FeishuGuide() {
                   <tr><td className="border p-2">总分</td><td className="border p-2">数字</td></tr>
                   <tr><td className="border p-2">风味笔记</td><td className="border p-2">多行文本</td></tr>
                   <tr><td className="border p-2">缺陷记录</td><td className="border p-2">多行文本</td></tr>
+                  <tr><td className="border p-2">创建时间</td><td className="border p-2">日期</td></tr>
+                </tbody>
+              </table>
+            </div>
+
+            <p className="text-gray-600 mt-4">如果是同步样品库（可选），请另外创建一个数据表，包含以下列：</p>
+            <div className="overflow-x-auto">
+              <table className="min-w-full text-xs border border-gray-200 mt-2">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="border p-2 text-left">列名</th>
+                    <th className="border p-2 text-left">类型</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr><td className="border p-2">样品名称</td><td className="border p-2">单行文本</td></tr>
+                  <tr><td className="border p-2">产地</td><td className="border p-2">单行文本</td></tr>
+                  <tr><td className="border p-2">处理法</td><td className="border p-2">单行文本</td></tr>
+                  <tr><td className="border p-2">豆种</td><td className="border p-2">单行文本</td></tr>
+                  <tr><td className="border p-2">瑕疵率</td><td className="border p-2">单行文本</td></tr>
+                  <tr><td className="border p-2">水分</td><td className="border p-2">单行文本</td></tr>
+                  <tr><td className="border p-2">水活性</td><td className="border p-2">单行文本</td></tr>
+                  <tr><td className="border p-2">目数</td><td className="border p-2">单行文本</td></tr>
+                  <tr><td className="border p-2">产季</td><td className="border p-2">单行文本</td></tr>
+                  <tr><td className="border p-2">提供商</td><td className="border p-2">单行文本</td></tr>
+                  <tr><td className="border p-2">样品类型</td><td className="border p-2">单行文本</td></tr>
                   <tr><td className="border p-2">创建时间</td><td className="border p-2">日期</td></tr>
                 </tbody>
               </table>
