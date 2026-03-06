@@ -76,7 +76,7 @@ export default function FeishuGuide() {
                   </tr>
                 </thead>
                 <tbody>
-                  <tr><td className="border p-2">批次号</td><td className="border p-2">多行文本</td></tr>
+                  <tr><td className="border p-2">杯测活动</td><td className="border p-2">单行文本</td></tr>
                   <tr><td className="border p-2">杯测日期</td><td className="border p-2">日期</td></tr>
                   <tr><td className="border p-2">烘焙日期</td><td className="border p-2">日期</td></tr>
                   <tr><td className="border p-2">样品名称</td><td className="border p-2">单行文本</td></tr>
