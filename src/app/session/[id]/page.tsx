@@ -11,6 +11,7 @@ import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { v4 as uuidv4 } from 'uuid';
 import { QRCodeSVG } from 'qrcode.react';
+import LZString from 'lz-string';
 
 export default function SessionDetailPage() {
   const params = useParams();
@@ -38,10 +39,11 @@ export default function SessionDetailPage() {
         type: s.type
       }))
     };
-    // Use UTF-8 safe encoding
-    const encoded = btoa(encodeURIComponent(JSON.stringify(shareData)));
+    // Use LZString to compress data for shorter URL
+    const jsonString = JSON.stringify(shareData);
+    const compressed = LZString.compressToEncodedURIComponent(jsonString);
     const baseUrl = window.location.origin;
-    return `${baseUrl}/session/join?data=${encoded}`;
+    return `${baseUrl}/session/join?data=${compressed}`;
   };
 
   useEffect(() => {

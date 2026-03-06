@@ -6,6 +6,7 @@ import { useSessions } from '@/lib/context';
 import { v4 as uuidv4 } from 'uuid';
 import { ArrowLeft, Coffee, Loader2 } from 'lucide-react';
 import Link from 'next/link';
+import LZString from 'lz-string';
 
 function JoinSessionContent() {
   const router = useRouter();
@@ -24,8 +25,22 @@ function JoinSessionContent() {
     }
 
     try {
-      // Use UTF-8 safe decoding
-      const decoded = JSON.parse(decodeURIComponent(atob(data)));
+      let jsonString = LZString.decompressFromEncodedURIComponent(data);
+      
+      // Fallback for old links (base64 encoded)
+      if (!jsonString) {
+        try {
+          jsonString = decodeURIComponent(atob(data));
+        } catch (e) {
+          // Ignore fallback error
+        }
+      }
+
+      if (!jsonString) {
+        throw new Error('Failed to decompress/decode data');
+      }
+
+      const decoded = JSON.parse(jsonString);
       setSessionData(decoded);
       setIsProcessing(false);
     } catch (e) {
