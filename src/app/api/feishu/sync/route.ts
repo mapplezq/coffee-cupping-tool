@@ -23,7 +23,7 @@ export async function POST(request: Request) {
                    sample.type === 'other' ? '其他' : sample.type || '',
         "样品名称": sample.name,
         "产地": sample.origin,
-        "处理方式": sample.process,
+        "处理法": sample.process,
         "杯测人": score?.cupperName || "", // Added cupper name
         "香气": score?.fragrance || 0,
         "风味": score?.flavor || 0,

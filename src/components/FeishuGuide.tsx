@@ -81,7 +81,7 @@ export default function FeishuGuide() {
                   <tr><td className="border p-2">样品类型</td><td className="border p-2">单行文本</td></tr>
                   <tr><td className="border p-2">样品名称</td><td className="border p-2">单行文本</td></tr>
                   <tr><td className="border p-2">产地</td><td className="border p-2">单行文本</td></tr>
-                  <tr><td className="border p-2">处理方式</td><td className="border p-2">单行文本</td></tr>
+                  <tr><td className="border p-2">处理法</td><td className="border p-2">单行文本</td></tr>
                   <tr><td className="border p-2">杯测人</td><td className="border p-2">单行文本</td></tr>
                   <tr><td className="border p-2">香气</td><td className="border p-2">数字</td></tr>
                   <tr><td className="border p-2">风味</td><td className="border p-2">数字</td></tr>
