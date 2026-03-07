@@ -45,6 +45,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ success: true, data: result });
   } catch (error: any) {
     console.error('Sync error:', error);
-    return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status: 500 });
+    let errorMessage = error.message || 'Internal Server Error';
+    if (errorMessage.includes('FieldNameNotFound')) {
+      errorMessage = '同步失败：飞书表格中缺少必要字段。请确保表格包含“样品类型”、“处理法”等列，且名称完全一致。';
+    }
+    return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }
