@@ -18,19 +18,19 @@ export async function POST(request: Request) {
       "样品名称": sample.name,
       "产地": sample.origin,
       "处理法": sample.process,
-      "豆种": sample.variety,
-      "瑕疵率": sample.defectRate,
-      "水分": sample.moisture,
-      "水活性": sample.waterActivity,
-      "目数": sample.screenSize,
-      "产季": sample.cropYear,
-      "提供商": sample.supplier,
+      "豆种": sample.variety || "",
+      "瑕疵率": sample.defectRate || "",
+      "水分": sample.moisture || "",
+      "水活性": sample.waterActivity || "",
+      "目数": sample.screenSize || "",
+      "产季": sample.cropYear || "",
+      "提供商": sample.supplier || "",
       "样品类型": sample.type === 'pre_shipment' ? '货前样' :
                  sample.type === 'processing' ? '加工样' :
                  sample.type === 'arrival' ? '到货样' :
                  sample.type === 'sales' ? '可销售样' :
                  sample.type === 'self_drawn' ? '自抽样' :
-                 sample.type === 'other' ? '其他' : sample.type,
+                 sample.type === 'other' ? '其他' : (sample.type || ""),
       "创建时间": new Date(sample.createdAt).getTime(),
     }));
 
@@ -39,6 +39,12 @@ export async function POST(request: Request) {
     return NextResponse.json({ success: true, data: result });
   } catch (error: any) {
     console.error("Sync samples error:", error);
-    return NextResponse.json({ error: error.message || "Unknown error" }, { status: 500 });
+    let errorMessage = error.message || "Unknown error";
+    if (errorMessage.includes('TextFieldConvFail')) {
+      errorMessage = '同步失败：字段类型转换错误。请检查飞书表格中各列的类型设置（例如“创建时间”应为日期类型，其他多为文本类型）。';
+    } else if (errorMessage.includes('FieldNameNotFound')) {
+      errorMessage = '同步失败：飞书表格中缺少必要字段。请确保表格包含所有必要列且名称一致。';
+    }
+    return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }
