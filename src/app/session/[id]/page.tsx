@@ -6,12 +6,13 @@ import { useSessions } from '@/lib/context';
 import { SessionWithSamples, CuppingScore } from '@/lib/types';
 import ScoringForm from '@/components/ScoringForm';
 import SettingsModal from '@/components/SettingsModal';
-import { ArrowLeft, RefreshCw, CheckCircle, Settings, Share2, X, Eye, EyeOff, ChevronLeft, ChevronRight } from 'lucide-react';
+import { ArrowLeft, RefreshCw, CheckCircle, Settings, Share2, X, Eye, EyeOff, ChevronLeft, ChevronRight, Copy, Image as ImageIcon } from 'lucide-react';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { v4 as uuidv4 } from 'uuid';
 import { QRCodeSVG } from 'qrcode.react';
 import LZString from 'lz-string';
+import html2canvas from 'html2canvas';
 
 export default function SessionDetailPage() {
   const params = useParams();
@@ -179,6 +180,35 @@ export default function SessionDetailPage() {
     } finally {
       setIsSyncing(false);
     }
+  };
+
+  const handleShareAsImage = async () => {
+    const element = document.getElementById('share-card');
+    if (!element) return;
+    
+    try {
+      const canvas = await html2canvas(element, {
+        backgroundColor: '#ffffff',
+        scale: 2, // Higher quality
+      });
+      
+      const link = document.createElement('a');
+      link.download = `杯测分享-${session?.name}.png`;
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+    } catch (err) {
+      console.error('Failed to generate image:', err);
+      alert('生成图片失败，请重试');
+    }
+  };
+
+  const handleCopyLink = () => {
+    if (!session) return;
+    const url = getShareUrl();
+    const text = `☕️ 邀请您参加杯测会话\n\n📅 主题：${session.name}\n🕒 日期：${new Date(session.cuppingDate).toLocaleDateString()}\n🧪 样品数：${session.samples.length}支\n${session.blindMode ? '🕶️ 模式：盲测' : '📝 模式：公开'}\n\n👇 点击链接或保存二维码加入：\n${url}`;
+    
+    navigator.clipboard.writeText(text);
+    alert('分享文案已复制！可直接粘贴发送给好友。');
   };
 
   const handleSync = async () => {
@@ -396,33 +426,64 @@ export default function SessionDetailPage() {
 
       {/* Share Modal */}
       {isShareOpen && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md animate-in fade-in zoom-in duration-200">
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md animate-in fade-in zoom-in duration-200 my-8">
             <div className="p-6 border-b flex justify-between items-center">
               <h2 className="text-xl font-bold text-gray-900">分享会话</h2>
               <button onClick={() => setIsShareOpen(false)} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
                 <X className="w-5 h-5 text-gray-400" />
               </button>
             </div>
+            
             <div className="p-6 space-y-6 flex flex-col items-center">
-              <div className="bg-white p-4 rounded-xl shadow-inner border border-gray-100">
-                <QRCodeSVG value={getShareUrl()} size={200} />
-              </div>
-              <div className="text-center space-y-2">
-                <p className="text-sm text-gray-500">让其他杯测师扫描二维码加入</p>
-                <p className="text-xs text-gray-400 break-all px-4 hidden">
-                  {getShareUrl()}
+              {/* Share Card Area */}
+              <div id="share-card" className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm w-full space-y-4">
+                <div className="text-center space-y-1">
+                  <h3 className="font-bold text-lg text-gray-900">{session.name}</h3>
+                  <p className="text-sm text-gray-500">{new Date(session.cuppingDate).toLocaleDateString()}</p>
+                </div>
+
+                <div className="border-t border-b border-gray-100 py-4 space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-500">样品数量</span>
+                    <span className="font-medium">{session.samples.length} 支</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-500">模式</span>
+                    <span className="font-medium text-amber-600">
+                      {session.blindMode ? '盲测 (Blind)' : '公开 (Open)'}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex justify-center py-2">
+                  <div className="p-2 bg-white rounded-lg border border-gray-100">
+                    <QRCodeSVG value={getShareUrl()} size={180} />
+                  </div>
+                </div>
+                
+                <p className="text-center text-xs text-gray-400">
+                  使用 Coffee Cupping Tool 扫码或访问链接加入
                 </p>
               </div>
-              <button
-                onClick={() => {
-                  navigator.clipboard.writeText(getShareUrl());
-                  alert('链接已复制到剪贴板');
-                }}
-                className="w-full py-2 bg-amber-50 text-amber-700 hover:bg-amber-100 rounded-lg font-medium transition-colors border border-amber-200"
-              >
-                复制分享链接
-              </button>
+
+              {/* Action Buttons */}
+              <div className="grid grid-cols-2 gap-3 w-full">
+                <button
+                  onClick={handleShareAsImage}
+                  className="flex items-center justify-center gap-2 py-2.5 px-4 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 rounded-xl font-medium transition-colors shadow-sm"
+                >
+                  <ImageIcon className="w-4 h-4" />
+                  保存图片
+                </button>
+                <button
+                  onClick={handleCopyLink}
+                  className="flex items-center justify-center gap-2 py-2.5 px-4 bg-amber-600 hover:bg-amber-700 text-white rounded-xl font-medium transition-colors shadow-sm"
+                >
+                  <Copy className="w-4 h-4" />
+                  复制文案
+                </button>
+              </div>
             </div>
           </div>
         </div>
