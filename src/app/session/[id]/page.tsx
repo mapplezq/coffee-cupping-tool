@@ -310,25 +310,12 @@ export default function SessionDetailPage() {
 
       // --- Optimized Sharing Logic ---
       
-      // 1. Check User Agent
-      const ua = navigator.userAgent || '';
-      const isWeChat = /MicroMessenger/i.test(ua);
-      const isMobile = /iPhone|iPad|iPod|Android/i.test(ua);
-
-      // 2. Data URL
+      // 1. Data URL
       const dataUrl = canvas.toDataURL('image/png');
 
-      // 3. Logic Branch
-      if (isWeChat || isMobile) {
-        // Force preview modal for all mobile devices including WeChat
-        setPreviewImage(dataUrl);
-      } else {
-        // Desktop: Direct download
-        const link = document.createElement('a');
-        link.download = `杯测分享-${session.name}.png`;
-        link.href = dataUrl;
-        link.click();
-      }
+      // 2. Logic Branch: Force preview modal for all environments temporarily to debug
+      // This ensures user always sees the image, regardless of browser capabilities
+      setPreviewImage(dataUrl);
 
     } catch (err) {
       console.error('Failed to generate image:', err);
