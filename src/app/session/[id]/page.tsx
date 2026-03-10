@@ -33,6 +33,8 @@ export default function SessionDetailPage() {
     const shareData = {
       name: session.name,
       cuppingDate: session.cuppingDate,
+      blindMode: session.blindMode, // Include blind mode settings
+      blindLabelType: session.blindLabelType,
       samples: session.samples.map(s => ({
         name: s.name,
         origin: s.origin,

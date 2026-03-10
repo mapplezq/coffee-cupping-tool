@@ -63,6 +63,8 @@ function JoinSessionContent() {
         name: sessionData.name,
         cuppingDate: sessionData.cuppingDate || new Date().toISOString(),
         status: 'draft' as const,
+        blindMode: sessionData.blindMode, // Restore blind mode settings
+        blindLabelType: sessionData.blindLabelType,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
         samples: (sessionData.samples || []).map((s: any) => ({
@@ -146,8 +148,18 @@ function JoinSessionContent() {
           <label className="text-xs font-medium text-gray-500 uppercase mb-2 block">样品预览</label>
           <div className="space-y-2 max-h-40 overflow-y-auto">
             {sessionData.samples?.map((s: any, i: number) => (
-              <div key={i} className="text-sm text-gray-700 bg-gray-50 p-2 rounded">
-                {i + 1}. {s.name} <span className="text-gray-400">({s.origin})</span>
+              <div key={i} className="text-sm text-gray-700 bg-gray-50 p-2 rounded flex justify-between">
+                <span>
+                  {sessionData.blindMode ? (
+                    // Blind mode: Show label (A/B/C or 1/2/3)
+                    sessionData.blindLabelType === 'number' ? `${i + 1}号样品` : `${String.fromCharCode(65 + i)}样品`
+                  ) : (
+                    // Open mode: Show name
+                    `${i + 1}. ${s.name}`
+                  )}
+                </span>
+                {!sessionData.blindMode && <span className="text-gray-400 text-xs">({s.origin})</span>}
+                {sessionData.blindMode && <span className="text-amber-600 text-xs bg-amber-50 px-1 rounded">盲测</span>}
               </div>
             ))}
           </div>
