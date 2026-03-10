@@ -286,67 +286,47 @@ export default function SessionDetailPage() {
       ctx.stroke();
 
       // Generate QR Code
-      const qrDataUrl = await QRCode.toDataURL(getShareUrl(), { margin: 2, width: qrSize, color: { dark: '#000000', light: '#ffffff' } });
-      const qrImage = new Image();
-      qrImage.onload = async () => {
-        // Draw QR Code centered
-        const qrX = (width - qrSize) / 2;
-        const qrY = padding + headerHeight + infoHeight + 30;
-        ctx.drawImage(qrImage, qrX, qrY, qrSize, qrSize);
+      // Use toCanvas instead of toDataURL + Image to avoid async loading issues
+      const qrCanvas = document.createElement('canvas');
+      await QRCode.toCanvas(qrCanvas, getShareUrl(), { margin: 2, width: qrSize, color: { dark: '#000000', light: '#ffffff' } });
+      
+      // Draw QR Code centered
+      const qrX = (width - qrSize) / 2;
+      const qrY = padding + headerHeight + infoHeight + 30;
+      ctx.drawImage(qrCanvas, qrX, qrY, qrSize, qrSize);
 
-        // Draw Footer Text
-        ctx.textAlign = 'center';
-        ctx.fillStyle = '#9ca3af';
-        ctx.font = '20px sans-serif';
-        ctx.fillText('使用 Coffee Cupping Tool 扫码或访问链接加入', width / 2, height - padding);
+      // Draw Footer Text
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#9ca3af';
+      ctx.font = '20px sans-serif';
+      ctx.fillText('使用 Coffee Cupping Tool 扫码或访问链接加入', width / 2, height - padding);
 
-        // --- Optimized Sharing Logic ---
-        
-        // 1. Check User Agent
-        const ua = navigator.userAgent || '';
-        const isWeChat = /MicroMessenger/i.test(ua);
-        const isMobile = /iPhone|iPad|iPod|Android/i.test(ua);
+      // --- Optimized Sharing Logic ---
+      
+      // 1. Check User Agent
+      const ua = navigator.userAgent || '';
+      const isWeChat = /MicroMessenger/i.test(ua);
+      const isMobile = /iPhone|iPad|iPod|Android/i.test(ua);
 
-        // 2. Data URL
-        const dataUrl = canvas.toDataURL('image/png');
+      // 2. Data URL
+      const dataUrl = canvas.toDataURL('image/png');
 
-        // 3. Logic Branch
-        if (isWeChat) {
-          // WeChat: Force preview modal (Web Share often fails for files)
-          setPreviewImage(dataUrl);
-        } else if (navigator.share && isMobile) {
-          // Other Mobile: Try Web Share API
-          try {
-            const blob = await new Promise<Blob | null>(resolve => canvas.toBlob(resolve, 'image/png'));
-            if (blob) {
-              const file = new File([blob], `cupping-share-${session.name}.png`, { type: 'image/png' });
-              
-              if (navigator.canShare && navigator.canShare({ files: [file] })) {
-                await navigator.share({
-                  files: [file],
-                  title: '杯测邀请',
-                  text: `邀请您参加杯测：${session.name}`,
-                });
-                return; 
-              }
-            }
-          } catch (e) {
-            console.warn('Web Share API failed, falling back to preview', e);
-            setPreviewImage(dataUrl); // Fallback to preview
-          }
-        } else {
-          // Desktop: Direct download
-          const link = document.createElement('a');
-          link.download = `杯测分享-${session.name}.png`;
-          link.href = dataUrl;
-          link.click();
-        }
-      };
-      qrImage.src = qrDataUrl;
+      // 3. Logic Branch
+      if (isWeChat || isMobile) {
+        // Force preview modal for all mobile devices including WeChat
+        // This is more reliable than Web Share API for images in many contexts
+        setPreviewImage(dataUrl);
+      } else {
+        // Desktop: Direct download
+        const link = document.createElement('a');
+        link.download = `杯测分享-${session.name}.png`;
+        link.href = dataUrl;
+        link.click();
+      }
 
     } catch (err) {
       console.error('Failed to generate image:', err);
-      alert('生成图片失败，请重试');
+      alert('生成图片失败: ' + (err instanceof Error ? err.message : String(err)));
     }
   };
 
