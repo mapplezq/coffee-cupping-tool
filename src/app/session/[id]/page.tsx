@@ -12,7 +12,7 @@ import { cn } from '@/lib/utils';
 import { v4 as uuidv4 } from 'uuid';
 import { QRCodeSVG } from 'qrcode.react';
 import LZString from 'lz-string';
-import html2canvas from 'html2canvas';
+import QRCode from 'qrcode';
 
 export default function SessionDetailPage() {
   const params = useParams();
@@ -183,39 +183,103 @@ export default function SessionDetailPage() {
   };
 
   const handleShareAsImage = async () => {
-    const element = document.getElementById('share-card');
-    if (!element) return;
+    if (!session) return;
     
     try {
-      // Use useCORS to allow loading images if needed, though here we mostly have text/SVG
-      const canvas = await html2canvas(element, {
-        backgroundColor: '#ffffff',
-        scale: 2, // Higher quality
-        useCORS: true, // Attempt to handle CORS images if any
-        logging: false,
-        onclone: (document) => {
-          // Force styles on the cloned element to avoid lab() colors
-          const el = document.getElementById('share-card');
-          if (el) {
-            el.style.backgroundColor = '#ffffff';
-            el.style.color = '#000000';
-            // Force text colors for specific elements if needed
-            const texts = el.querySelectorAll('*');
-            texts.forEach((t: any) => {
-               // Optional: ensure text is rendered with hex colors
-            });
-          }
-        }
-      });
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+
+      // Set canvas size (e.g. 600px width, dynamic height)
+      const width = 600;
+      const padding = 40;
+      const headerHeight = 120;
+      const infoHeight = 100;
+      const qrSize = 240;
+      const footerHeight = 60;
+      const height = headerHeight + infoHeight + qrSize + footerHeight + padding * 2;
+
+      canvas.width = width;
+      canvas.height = height;
+
+      // Fill background
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, width, height);
+
+      // Draw Title
+      ctx.fillStyle = '#111827';
+      ctx.font = 'bold 32px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(session.name, width / 2, padding + 50);
+
+      // Draw Date
+      ctx.fillStyle = '#6b7280';
+      ctx.font = '20px sans-serif';
+      ctx.fillText(new Date(session.cuppingDate).toLocaleDateString(), width / 2, padding + 90);
+
+      // Draw Separator
+      ctx.strokeStyle = '#f3f4f6';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(padding, padding + headerHeight);
+      ctx.lineTo(width - padding, padding + headerHeight);
+      ctx.stroke();
+
+      // Draw Info Rows
+      ctx.textAlign = 'left';
+      ctx.font = '24px sans-serif';
       
-      const link = document.createElement('a');
-      link.download = `杯测分享-${session?.name}.png`;
-      link.href = canvas.toDataURL('image/png');
-      link.click();
+      // Sample Count
+      ctx.fillStyle = '#6b7280';
+      ctx.fillText('样品数量', padding, padding + headerHeight + 50);
+      ctx.textAlign = 'right';
+      ctx.fillStyle = '#111827';
+      ctx.font = 'bold 24px sans-serif';
+      ctx.fillText(`${session.samples.length} 支`, width - padding, padding + headerHeight + 50);
+
+      // Mode
+      ctx.textAlign = 'left';
+      ctx.fillStyle = '#6b7280';
+      ctx.font = '24px sans-serif';
+      ctx.fillText('模式', padding, padding + headerHeight + 90);
+      ctx.textAlign = 'right';
+      ctx.fillStyle = '#d97706'; // Amber color
+      ctx.font = 'bold 24px sans-serif';
+      ctx.fillText(session.blindMode ? '盲测 (Blind)' : '公开 (Open)', width - padding, padding + headerHeight + 90);
+
+      // Draw Separator
+      ctx.strokeStyle = '#f3f4f6';
+      ctx.beginPath();
+      ctx.moveTo(padding, padding + headerHeight + infoHeight);
+      ctx.lineTo(width - padding, padding + headerHeight + infoHeight);
+      ctx.stroke();
+
+      // Generate QR Code
+      const qrDataUrl = await QRCode.toDataURL(getShareUrl(), { margin: 1, width: qrSize });
+      const qrImage = new Image();
+      qrImage.onload = () => {
+        // Draw QR Code centered
+        const qrX = (width - qrSize) / 2;
+        const qrY = padding + headerHeight + infoHeight + 20;
+        ctx.drawImage(qrImage, qrX, qrY, qrSize, qrSize);
+
+        // Draw Footer Text
+        ctx.textAlign = 'center';
+        ctx.fillStyle = '#9ca3af';
+        ctx.font = '16px sans-serif';
+        ctx.fillText('使用 Coffee Cupping Tool 扫码或访问链接加入', width / 2, height - padding);
+
+        // Trigger Download
+        const link = document.createElement('a');
+        link.download = `杯测分享-${session.name}.png`;
+        link.href = canvas.toDataURL('image/png');
+        link.click();
+      };
+      qrImage.src = qrDataUrl;
+
     } catch (err) {
       console.error('Failed to generate image:', err);
-      // Fallback message
-      alert('生成图片失败。可能是浏览器兼容性问题，请尝试直接截图分享。');
+      alert('生成图片失败，请重试');
     }
   };
 
