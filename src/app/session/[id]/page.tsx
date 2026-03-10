@@ -187,9 +187,12 @@ export default function SessionDetailPage() {
     if (!element) return;
     
     try {
+      // Use useCORS to allow loading images if needed, though here we mostly have text/SVG
       const canvas = await html2canvas(element, {
         backgroundColor: '#ffffff',
         scale: 2, // Higher quality
+        useCORS: true, // Attempt to handle CORS images if any
+        logging: false,
       });
       
       const link = document.createElement('a');
@@ -198,7 +201,8 @@ export default function SessionDetailPage() {
       link.click();
     } catch (err) {
       console.error('Failed to generate image:', err);
-      alert('生成图片失败，请重试');
+      // Fallback message
+      alert('生成图片失败。可能是浏览器兼容性问题，请尝试直接截图分享。');
     }
   };
 
@@ -429,7 +433,7 @@ export default function SessionDetailPage() {
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 overflow-y-auto">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-md animate-in fade-in zoom-in duration-200 my-8">
             <div className="p-6 border-b flex justify-between items-center">
-              <h2 className="text-xl font-bold text-gray-900">分享会话</h2>
+              <h2 className="text-xl font-bold text-gray-900">邀请杯测师加入</h2>
               <button onClick={() => setIsShareOpen(false)} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
                 <X className="w-5 h-5 text-gray-400" />
               </button>
