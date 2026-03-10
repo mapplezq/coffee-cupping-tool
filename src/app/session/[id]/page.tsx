@@ -347,17 +347,31 @@ export default function SessionDetailPage() {
           }
         } catch (shareError) {
           addLog('Web Share API failed: ' + String(shareError));
-          // Fallback to preview below
+          // Continue to fallback
         }
       } else {
         addLog('Web Share API not supported.');
       }
 
-      // Fallback: Data URL Preview
-      addLog('Generating Data URL for preview...');
+      // Fallback: Data URL
+      addLog('Generating Data URL...');
       const dataUrl = canvas.toDataURL('image/png');
-      setPreviewImage(dataUrl);
-      addLog('Preview modal opened.');
+
+      // Check device type
+      const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+      
+      if (isMobile) {
+        // Mobile: Show preview modal for long-press saving
+        setPreviewImage(dataUrl);
+        addLog('Preview modal opened (Mobile).');
+      } else {
+        // Desktop: Direct download
+        const link = document.createElement('a');
+        link.download = `杯测分享-${session.name}.png`;
+        link.href = dataUrl;
+        link.click();
+        addLog('Download triggered (Desktop).');
+      }
 
     } catch (err) {
       const errMsg = 'Error: ' + (err instanceof Error ? err.message : String(err));
