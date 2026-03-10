@@ -84,7 +84,11 @@ export default function NewSessionPage() {
   };
 
   const handleAddFromLibrary = () => {
-    const selected = globalSamples.filter(s => selectedLibrarySamples.includes(s.id));
+    // Map selected IDs to sample objects, maintaining selection order
+    const selected = selectedLibrarySamples
+      .map(id => globalSamples.find(s => s.id === id))
+      .filter((s): s is GlobalSample => !!s);
+      
     selected.forEach(s => {
       append({
         name: s.name,
@@ -228,8 +232,8 @@ export default function NewSessionPage() {
                 </div>
               )}
               {fields.map((field, index) => (
-                <div key={field.id} className="flex gap-4 items-start bg-gray-50 p-4 rounded-lg relative group">
-                  <div className="absolute -left-3 top-1/2 -translate-y-1/2 flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                <div key={field.id} className="flex gap-4 items-start bg-gray-50 p-4 rounded-lg relative">
+                  <div className="flex flex-col gap-1 mr-1 pt-1">
                     <button
                       type="button"
                       onClick={() => index > 0 && move(index, index - 1)}
