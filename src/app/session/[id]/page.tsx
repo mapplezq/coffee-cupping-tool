@@ -6,7 +6,7 @@ import { useSessions } from '@/lib/context';
 import { SessionWithSamples, CuppingScore } from '@/lib/types';
 import ScoringForm from '@/components/ScoringForm';
 import SettingsModal from '@/components/SettingsModal';
-import { ArrowLeft, RefreshCw, CheckCircle, Settings, Share2, X, Eye, EyeOff, ChevronLeft, ChevronRight, Copy, Image as ImageIcon } from 'lucide-react';
+import { ArrowLeft, RefreshCw, CheckCircle, Settings, Share2, X, Eye, EyeOff, ChevronLeft, ChevronRight, Copy, Image as ImageIcon, Upload } from 'lucide-react';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { v4 as uuidv4 } from 'uuid';
@@ -26,6 +26,7 @@ export default function SessionDetailPage() {
   const [isShareOpen, setIsShareOpen] = useState(false);
   const [dirtySampleId, setDirtySampleId] = useState<string | null>(null);
   const [showBlindMap, setShowBlindMap] = useState(false);
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
 
   const sessionId = params.id as string;
 
@@ -68,7 +69,37 @@ export default function SessionDetailPage() {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
-      </div>
+        {/* Image Preview Modal for Mobile/WeChat */}
+      {previewImage && (
+        <div className="fixed inset-0 bg-black/90 z-[60] flex flex-col items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="absolute top-4 right-4">
+            <button 
+              onClick={() => setPreviewImage(null)}
+              className="p-2 bg-white/10 text-white rounded-full hover:bg-white/20 transition-colors"
+            >
+              <X className="w-6 h-6" />
+            </button>
+          </div>
+          
+          <div className="flex-1 flex items-center justify-center w-full max-w-lg">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img 
+              src={previewImage} 
+              alt="Share Preview" 
+              className="max-w-full max-h-[80vh] rounded-lg shadow-2xl object-contain"
+            />
+          </div>
+          
+          <div className="mt-4 text-center text-white/80 space-y-1">
+            <p className="font-medium text-lg text-white flex items-center justify-center gap-2">
+              <Upload className="w-5 h-5" />
+              长按上方图片发送给朋友
+            </p>
+            <p className="text-sm">或保存到手机相册</p>
+          </div>
+        </div>
+      )}
+    </div>
     );
   }
 
@@ -257,7 +288,7 @@ export default function SessionDetailPage() {
       // Generate QR Code
       const qrDataUrl = await QRCode.toDataURL(getShareUrl(), { margin: 1, width: qrSize });
       const qrImage = new Image();
-      qrImage.onload = () => {
+      qrImage.onload = async () => {
         // Draw QR Code centered
         const qrX = (width - qrSize) / 2;
         const qrY = padding + headerHeight + infoHeight + 20;
@@ -269,11 +300,45 @@ export default function SessionDetailPage() {
         ctx.font = '16px sans-serif';
         ctx.fillText('使用 Coffee Cupping Tool 扫码或访问链接加入', width / 2, height - padding);
 
-        // Trigger Download
-        const link = document.createElement('a');
-        link.download = `杯测分享-${session.name}.png`;
-        link.href = canvas.toDataURL('image/png');
-        link.click();
+        // --- Optimized Sharing Logic ---
+        
+        // 1. Try Web Share API (Mobile Native Share)
+        if (navigator.share) {
+          try {
+            const blob = await new Promise<Blob | null>(resolve => canvas.toBlob(resolve, 'image/png'));
+            if (blob) {
+              const file = new File([blob], `cupping-share-${session.name}.png`, { type: 'image/png' });
+              
+              if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                await navigator.share({
+                  files: [file],
+                  title: '杯测邀请',
+                  text: `邀请您参加杯测：${session.name}`,
+                });
+                return; // Success, exit
+              }
+            }
+          } catch (e) {
+            console.warn('Web Share API failed, falling back to download/preview', e);
+          }
+        }
+
+        // 2. Fallback: Data URL
+        const dataUrl = canvas.toDataURL('image/png');
+
+        // 3. Check if Mobile/WeChat (User Agent)
+        const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+        
+        if (isMobile) {
+          // Show preview modal for long-press saving
+          setPreviewImage(dataUrl);
+        } else {
+          // Desktop: Direct download
+          const link = document.createElement('a');
+          link.download = `杯测分享-${session.name}.png`;
+          link.href = dataUrl;
+          link.click();
+        }
       };
       qrImage.src = qrDataUrl;
 
