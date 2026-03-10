@@ -28,6 +28,8 @@ export default function SessionDetailPage() {
   const [showBlindMap, setShowBlindMap] = useState(false);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
 
+  const [isGeneratingImage, setIsGeneratingImage] = useState(false);
+
   const sessionId = params.id as string;
 
   const getShareUrl = () => {
@@ -215,13 +217,15 @@ export default function SessionDetailPage() {
 
   const handleShareAsImage = async () => {
     if (!session) return;
+    setIsGeneratingImage(true);
     
     try {
+      // Create canvas
       const canvas = document.createElement('canvas');
       const ctx = canvas.getContext('2d');
-      if (!ctx) return;
+      if (!ctx) throw new Error('Could not get canvas context');
 
-      // Set canvas size (e.g. 600px width, dynamic height)
+      // Set canvas size (e.g. 800px width, dynamic height)
       const width = 800;
       const padding = 60;
       const headerHeight = 160;
@@ -286,9 +290,12 @@ export default function SessionDetailPage() {
       ctx.stroke();
 
       // Generate QR Code
-      // Use toCanvas instead of toDataURL + Image to avoid async loading issues
       const qrCanvas = document.createElement('canvas');
-      await QRCode.toCanvas(qrCanvas, getShareUrl(), { margin: 2, width: qrSize, color: { dark: '#000000', light: '#ffffff' } });
+      try {
+        await QRCode.toCanvas(qrCanvas, getShareUrl(), { margin: 2, width: qrSize, color: { dark: '#000000', light: '#ffffff' } });
+      } catch (qrError) {
+        throw new Error('Failed to generate QR code: ' + String(qrError));
+      }
       
       // Draw QR Code centered
       const qrX = (width - qrSize) / 2;
@@ -314,7 +321,6 @@ export default function SessionDetailPage() {
       // 3. Logic Branch
       if (isWeChat || isMobile) {
         // Force preview modal for all mobile devices including WeChat
-        // This is more reliable than Web Share API for images in many contexts
         setPreviewImage(dataUrl);
       } else {
         // Desktop: Direct download
@@ -327,6 +333,8 @@ export default function SessionDetailPage() {
     } catch (err) {
       console.error('Failed to generate image:', err);
       alert('生成图片失败: ' + (err instanceof Error ? err.message : String(err)));
+    } finally {
+      setIsGeneratingImage(false);
     }
   };
 
@@ -603,10 +611,11 @@ export default function SessionDetailPage() {
               <div className="grid grid-cols-2 gap-3 w-full">
                 <button
                   onClick={handleShareAsImage}
-                  className="flex items-center justify-center gap-2 py-2.5 px-4 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 rounded-xl font-medium transition-colors shadow-sm"
+                  disabled={isGeneratingImage}
+                  className="flex items-center justify-center gap-2 py-2.5 px-4 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 rounded-xl font-medium transition-colors shadow-sm disabled:opacity-50"
                 >
-                  <ImageIcon className="w-4 h-4" />
-                  保存图片
+                  {isGeneratingImage ? <RefreshCw className="w-4 h-4 animate-spin" /> : <ImageIcon className="w-4 h-4" />}
+                  {isGeneratingImage ? '生成中...' : '保存图片'}
                 </button>
                 <button
                   onClick={handleCopyLink}
