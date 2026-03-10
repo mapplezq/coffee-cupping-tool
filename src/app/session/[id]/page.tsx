@@ -30,6 +30,13 @@ export default function SessionDetailPage() {
 
   const [isGeneratingImage, setIsGeneratingImage] = useState(false);
 
+  const [debugLog, setDebugLog] = useState<string[]>([]);
+
+  const addLog = (msg: string) => {
+    console.log(msg);
+    setDebugLog(prev => [...prev, `${new Date().toLocaleTimeString()} - ${msg}`]);
+  };
+
   const sessionId = params.id as string;
 
   const getShareUrl = () => {
@@ -218,9 +225,12 @@ export default function SessionDetailPage() {
   const handleShareAsImage = async () => {
     if (!session) return;
     setIsGeneratingImage(true);
+    setDebugLog([]); // Clear logs
+    addLog('Start generating image...');
     
     try {
       // Create canvas
+      addLog('Creating canvas...');
       const canvas = document.createElement('canvas');
       const ctx = canvas.getContext('2d');
       if (!ctx) throw new Error('Could not get canvas context');
@@ -290,9 +300,11 @@ export default function SessionDetailPage() {
       ctx.stroke();
 
       // Generate QR Code
+      addLog('Generating QR code...');
       const qrCanvas = document.createElement('canvas');
       try {
         await QRCode.toCanvas(qrCanvas, getShareUrl(), { margin: 2, width: qrSize, color: { dark: '#000000', light: '#ffffff' } });
+        addLog('QR code generated.');
       } catch (qrError) {
         throw new Error('Failed to generate QR code: ' + String(qrError));
       }
@@ -310,16 +322,48 @@ export default function SessionDetailPage() {
 
       // --- Optimized Sharing Logic ---
       
-      // 1. Data URL
-      const dataUrl = canvas.toDataURL('image/png');
+      addLog('Converting canvas to blob...');
+      
+      // Try Web Share API with File first (Most modern mobile experience)
+      if (navigator.share && navigator.canShare) {
+        try {
+          const blob = await new Promise<Blob | null>(resolve => canvas.toBlob(resolve, 'image/png'));
+          if (blob) {
+            const file = new File([blob], `cupping-share-${session.name}.png`, { type: 'image/png' });
+            if (navigator.canShare({ files: [file] })) {
+              addLog('Invoking Web Share API...');
+              await navigator.share({
+                files: [file],
+                title: '杯测邀请',
+                text: `邀请您参加杯测：${session.name}`,
+              });
+              addLog('Share successful.');
+              return;
+            } else {
+              addLog('Web Share API does not support file sharing.');
+            }
+          } else {
+             addLog('Failed to create blob.');
+          }
+        } catch (shareError) {
+          addLog('Web Share API failed: ' + String(shareError));
+          // Fallback to preview below
+        }
+      } else {
+        addLog('Web Share API not supported.');
+      }
 
-      // 2. Logic Branch: Force preview modal for all environments temporarily to debug
-      // This ensures user always sees the image, regardless of browser capabilities
+      // Fallback: Data URL Preview
+      addLog('Generating Data URL for preview...');
+      const dataUrl = canvas.toDataURL('image/png');
       setPreviewImage(dataUrl);
+      addLog('Preview modal opened.');
 
     } catch (err) {
-      console.error('Failed to generate image:', err);
-      alert('生成图片失败: ' + (err instanceof Error ? err.message : String(err)));
+      const errMsg = 'Error: ' + (err instanceof Error ? err.message : String(err));
+      console.error(errMsg);
+      addLog(errMsg);
+      alert('生成图片失败，请查看底部日志');
     } finally {
       setIsGeneratingImage(false);
     }
@@ -602,7 +646,7 @@ export default function SessionDetailPage() {
                   className="flex items-center justify-center gap-2 py-2.5 px-4 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 rounded-xl font-medium transition-colors shadow-sm disabled:opacity-50"
                 >
                   {isGeneratingImage ? <RefreshCw className="w-4 h-4 animate-spin" /> : <ImageIcon className="w-4 h-4" />}
-                  {isGeneratingImage ? '生成中...' : '保存图片'}
+                  {isGeneratingImage ? '生成中...' : '分享图片'}
                 </button>
                 <button
                   onClick={handleCopyLink}
@@ -612,6 +656,15 @@ export default function SessionDetailPage() {
                   复制文案
                 </button>
               </div>
+              
+              {/* Debug Logs */}
+              {debugLog.length > 0 && (
+                <div className="w-full mt-4 p-2 bg-gray-100 rounded text-xs font-mono text-gray-500 max-h-24 overflow-y-auto">
+                  {debugLog.map((log, i) => (
+                    <div key={i}>{log}</div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </div>
