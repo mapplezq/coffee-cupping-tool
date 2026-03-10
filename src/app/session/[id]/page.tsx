@@ -6,7 +6,7 @@ import { useSessions } from '@/lib/context';
 import { SessionWithSamples, CuppingScore } from '@/lib/types';
 import ScoringForm from '@/components/ScoringForm';
 import SettingsModal from '@/components/SettingsModal';
-import { ArrowLeft, RefreshCw, CheckCircle, Settings, Share2, X, Eye, EyeOff } from 'lucide-react';
+import { ArrowLeft, RefreshCw, CheckCircle, Settings, Share2, X, Eye, EyeOff, ChevronLeft, ChevronRight } from 'lucide-react';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { v4 as uuidv4 } from 'uuid';
@@ -87,6 +87,7 @@ export default function SessionDetailPage() {
       setDirtySampleId(null); // Reset dirty state if user confirms switch
     }
     setActiveSampleId(newSampleId);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleSaveScore = async (scoreData: Omit<CuppingScore, 'id' | 'sampleId' | 'createdAt' | 'cupperName'>) => {
@@ -361,6 +362,35 @@ export default function SessionDetailPage() {
         </div>
 
       </div>
+
+      {/* Sticky Bottom Navigation */}
+      {session.samples.length > 1 && (
+        <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 shadow-lg z-40 safe-area-bottom">
+          <div className="max-w-4xl mx-auto flex items-center justify-between gap-4">
+            <button
+              onClick={() => activeSampleIndex > 0 && handleSampleSwitch(session.samples[activeSampleIndex - 1].id)}
+              disabled={activeSampleIndex <= 0}
+              className="flex items-center gap-2 px-4 py-2 text-gray-600 hover:text-amber-700 disabled:opacity-30 disabled:hover:text-gray-600 transition-colors"
+            >
+              <ChevronLeft className="w-5 h-5" />
+              <span className="font-medium">上一个</span>
+            </button>
+            
+            <div className="text-sm font-medium text-gray-500">
+              {activeSampleIndex + 1} / {session.samples.length}
+            </div>
+
+            <button
+              onClick={() => activeSampleIndex < session.samples.length - 1 && handleSampleSwitch(session.samples[activeSampleIndex + 1].id)}
+              disabled={activeSampleIndex >= session.samples.length - 1}
+              className="flex items-center gap-2 px-4 py-2 text-gray-600 hover:text-amber-700 disabled:opacity-30 disabled:hover:text-gray-600 transition-colors"
+            >
+              <span className="font-medium">下一个</span>
+              <ChevronRight className="w-5 h-5" />
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Share Modal */}
       {isShareOpen && (
