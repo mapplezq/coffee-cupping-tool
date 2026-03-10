@@ -8,6 +8,8 @@ import { Sample, CuppingScore, Defect } from '@/lib/types';
 import { Save, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
+import { useDebouncedCallback } from 'use-debounce';
+
 const scoreSchema = z.object({
   fragrance: z.number().min(0).max(10),
   flavor: z.number().min(0).max(10),
@@ -95,7 +97,26 @@ export default function ScoringForm({ sample, onSave, isSaving, onDirtyChange }:
 
   const totalScore = calculateTotal();
 
+  // Auto-save logic
+  const debouncedSave = useDebouncedCallback(async (data: ScoreFormValues) => {
+    await onSave({
+      ...data,
+      totalScore,
+      defects,
+      notes: data.notes || '',
+    });
+  }, 1500);
+
+  // Watch for changes and trigger auto-save
+  useEffect(() => {
+    if (isDirty) {
+      debouncedSave(values);
+    }
+  }, [values, isDirty, debouncedSave]);
+
   const onSubmit = async (data: ScoreFormValues) => {
+    // Manual save (if needed, or just rely on auto-save)
+    debouncedSave.cancel(); // Cancel pending debounce
     await onSave({
       ...data,
       totalScore,
@@ -144,14 +165,11 @@ export default function ScoringForm({ sample, onSave, isSaving, onDirtyChange }:
           <h2 className="text-3xl font-bold">{totalScore.toFixed(2)}</h2>
           <span className="text-amber-200 text-sm font-medium uppercase tracking-wider">总分</span>
         </div>
-        <button
-          type="submit"
-          disabled={isSaving}
-          className="bg-white text-amber-900 hover:bg-amber-50 px-6 py-2 rounded-lg font-bold shadow-sm transition-colors flex items-center gap-2 disabled:opacity-70"
-        >
-          <Save className="w-4 h-4" />
-          {isSaving ? '保存中...' : '保存评分'}
-        </button>
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-amber-200">
+            {isSaving ? '正在保存...' : isDirty ? '未保存' : '已自动保存'}
+          </span>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">

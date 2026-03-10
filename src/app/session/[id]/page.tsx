@@ -69,6 +69,14 @@ export default function SessionDetailPage() {
   }
 
   const activeSample = session.samples.find(s => s.id === activeSampleId);
+  const activeSampleIndex = session.samples.findIndex(s => s.id === activeSampleId);
+
+  const getSampleLabel = (sample: SessionWithSamples['samples'][0], index: number) => {
+    if (!session.blindMode) return sample.name;
+    if (session.blindLabelType === 'number') return `${index + 1}`;
+    // A, B, C...
+    return String.fromCharCode(65 + index);
+  };
 
   const handleSampleSwitch = (newSampleId: string) => {
     if (dirtySampleId && dirtySampleId !== newSampleId) {
@@ -237,7 +245,7 @@ export default function SessionDetailPage() {
         {/* Sample Tabs */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
           <div className="flex overflow-x-auto p-2 gap-2 bg-gray-50/50">
-            {session.samples.map((sample) => (
+            {session.samples.map((sample, index) => (
               <button
                 key={sample.id}
                 onClick={() => handleSampleSwitch(sample.id)}
@@ -248,7 +256,7 @@ export default function SessionDetailPage() {
                     : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
                 )}
               >
-                {sample.name}
+                {getSampleLabel(sample, index)}
                 {sample.score && <CheckCircle className="w-3 h-3 text-green-500" />}
               </button>
             ))}
@@ -257,31 +265,44 @@ export default function SessionDetailPage() {
           <div className="p-6">
              {activeSample ? (
                <div className="space-y-6">
+                 {/* Blind mode info or full details */}
                  <div className="bg-amber-50 p-4 rounded-lg border border-amber-100">
-                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                     <div>
-                       <span className="text-gray-500 block">产地</span>
-                       <span className="font-medium text-gray-900">{activeSample.origin}</span>
+                   {session.blindMode ? (
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <span className="text-gray-500 text-sm block">当前样品</span>
+                          <span className="text-2xl font-bold text-gray-900">{getSampleLabel(activeSample, activeSampleIndex)}</span>
+                        </div>
+                        <div className="text-xs text-amber-600 bg-amber-100 px-2 py-1 rounded">
+                          盲测模式
+                        </div>
+                      </div>
+                   ) : (
+                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                       <div>
+                         <span className="text-gray-500 block">产地</span>
+                         <span className="font-medium text-gray-900">{activeSample.origin}</span>
+                       </div>
+                       <div>
+                         <span className="text-gray-500 block">处理法</span>
+                         <span className="font-medium text-gray-900">{activeSample.process}</span>
+                       </div>
+                       <div>
+                         <span className="text-gray-500 block">样品类型</span>
+                         <span className="font-medium text-gray-900">
+                          {
+                            activeSample.type === 'pre_shipment' ? '货前样' :
+                            activeSample.type === 'processing' ? '加工样' :
+                            activeSample.type === 'arrival' ? '到货样' :
+                            activeSample.type === 'sales' ? '可销售样' :
+                            activeSample.type === 'self_drawn' ? '自抽样' :
+                            activeSample.type === 'other' ? '其他' : 
+                            activeSample.type || '-'
+                          }
+                         </span>
+                       </div>
                      </div>
-                     <div>
-                       <span className="text-gray-500 block">处理法</span>
-                       <span className="font-medium text-gray-900">{activeSample.process}</span>
-                     </div>
-                     <div>
-                       <span className="text-gray-500 block">样品类型</span>
-                       <span className="font-medium text-gray-900">
-                        {
-                          activeSample.type === 'pre_shipment' ? '货前样' :
-                          activeSample.type === 'processing' ? '加工样' :
-                          activeSample.type === 'arrival' ? '到货样' :
-                          activeSample.type === 'sales' ? '可销售样' :
-                          activeSample.type === 'self_drawn' ? '自抽样' :
-                          activeSample.type === 'other' ? '其他' : 
-                          activeSample.type || '-'
-                        }
-                       </span>
-                     </div>
-                   </div>
+                   )}
                  </div>
 
                  <ScoringForm 

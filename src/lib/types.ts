@@ -4,6 +4,8 @@ export interface CuppingSession {
   cuppingDate: string
   // roastDate removed from session
   status: 'draft' | 'completed' | 'synced'
+  blindMode?: boolean // Blind cupping mode
+  blindLabelType?: 'letter' | 'number' // 'letter' (A, B, C) or 'number' (1, 2, 3)
   createdAt: string
   updatedAt: string
 }

@@ -94,9 +94,22 @@ export default function SampleForm({ initialData, isEdit = false }: SampleFormPr
                 name="origin"
                 defaultValue={initialData?.origin}
                 type="text"
+                list="origin-options"
                 className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
                 placeholder="例如：Gedeb"
               />
+              <datalist id="origin-options">
+                <option value="云南普洱" />
+                <option value="云南孟连" />
+                <option value="埃塞俄比亚" />
+                <option value="哥伦比亚" />
+                <option value="肯尼亚" />
+                <option value="巴西" />
+                <option value="巴拿马" />
+                <option value="印度尼西亚" />
+                <option value="危地马拉" />
+                <option value="哥斯达黎加" />
+              </datalist>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -106,9 +119,19 @@ export default function SampleForm({ initialData, isEdit = false }: SampleFormPr
                 name="process"
                 defaultValue={initialData?.process}
                 type="text"
+                list="process-options"
                 className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
                 placeholder="例如：水洗"
               />
+              <datalist id="process-options">
+                <option value="水洗" />
+                <option value="日晒" />
+                <option value="蜜处理" />
+                <option value="厌氧水洗" />
+                <option value="厌氧日晒" />
+                <option value="湿刨法" />
+                <option value="二氧化碳浸渍" />
+              </datalist>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -135,9 +158,21 @@ export default function SampleForm({ initialData, isEdit = false }: SampleFormPr
                 name="variety"
                 defaultValue={initialData?.variety}
                 type="text"
+                list="variety-options"
                 className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
                 placeholder="例如：Geisha, Bourbon"
               />
+              <datalist id="variety-options">
+                <option value="铁皮卡" />
+                <option value="波旁" />
+                <option value="瑰夏" />
+                <option value="卡蒂姆" />
+                <option value="象豆" />
+                <option value="SL28" />
+                <option value="SL34" />
+                <option value="卡杜拉" />
+                <option value="卡杜艾" />
+              </datalist>
             </div>
           </div>
         </div>

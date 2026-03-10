@@ -7,7 +7,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { v4 as uuidv4 } from 'uuid';
 import { useSessions } from '@/lib/context';
-import { Plus, Trash2, ArrowLeft, Save, BookOpen, X, Search } from 'lucide-react';
+import { Plus, Trash2, ArrowLeft, Save, BookOpen, X, Search, ArrowUp, ArrowDown } from 'lucide-react';
 import Link from 'next/link';
 import { GlobalSample } from '@/lib/types';
 
@@ -22,6 +22,8 @@ const sessionSchema = z.object({
   name: z.string().min(1, "杯测名称必填"),
   cuppingDate: z.string().min(1, "杯测日期必填"),
   samples: z.array(sampleSchema).min(1, "至少需要一个样品"),
+  blindMode: z.boolean().optional(),
+  blindLabelType: z.enum(['letter', 'number']).optional(),
 });
 
 type SessionFormValues = z.infer<typeof sessionSchema>;
@@ -34,15 +36,19 @@ export default function NewSessionPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedLibrarySamples, setSelectedLibrarySamples] = useState<string[]>([]);
 
-  const { register, control, handleSubmit, formState: { errors } } = useForm<SessionFormValues>({
+  const { register, control, handleSubmit, watch, formState: { errors } } = useForm<SessionFormValues>({
     resolver: zodResolver(sessionSchema),
     defaultValues: {
       cuppingDate: new Date().toISOString().split('T')[0],
-      samples: [{ name: '', origin: '', process: '', type: 'pre_shipment' }],
+      samples: [],
+      blindMode: false,
+      blindLabelType: 'letter',
     },
   });
 
-  const { fields, append, remove } = useFieldArray({
+  const blindMode = watch('blindMode');
+
+  const { fields, append, remove, move } = useFieldArray({
     control,
     name: "samples",
   });
@@ -56,6 +62,8 @@ export default function NewSessionPage() {
         name: data.name,
         cuppingDate: data.cuppingDate,
         status: 'draft' as const,
+        blindMode: data.blindMode,
+        blindLabelType: data.blindLabelType,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
         samples: data.samples.map(s => ({
@@ -140,6 +148,53 @@ export default function NewSessionPage() {
                 {errors.cuppingDate && <p className="text-red-500 text-xs">{errors.cuppingDate.message}</p>}
               </div>
             </div>
+
+            <div className="pt-4 border-t border-gray-100">
+              <div className="flex items-start gap-4">
+                <div className="flex items-center h-6">
+                  <input
+                    id="blindMode"
+                    type="checkbox"
+                    {...register("blindMode")}
+                    className="w-4 h-4 text-amber-600 border-gray-300 rounded focus:ring-amber-500"
+                  />
+                </div>
+                <div className="flex-1">
+                  <label htmlFor="blindMode" className="text-sm font-medium text-gray-900 block">
+                    启用盲测模式
+                  </label>
+                  <p className="text-xs text-gray-500">
+                    开启后，打分时将隐藏样品名称，仅显示代号（如 A, B, C...）
+                  </p>
+                  
+                  {blindMode && (
+                    <div className="mt-3 flex items-center gap-4 animate-in fade-in slide-in-from-top-2">
+                      <label className="text-sm text-gray-700">代号类型:</label>
+                      <div className="flex gap-4">
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="radio"
+                            value="letter"
+                            {...register("blindLabelType")}
+                            className="text-amber-600 focus:ring-amber-500"
+                          />
+                          <span className="text-sm text-gray-600">字母 (A, B, C)</span>
+                        </label>
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="radio"
+                            value="number"
+                            {...register("blindLabelType")}
+                            className="text-amber-600 focus:ring-amber-500"
+                          />
+                          <span className="text-sm text-gray-600">数字 (1, 2, 3)</span>
+                        </label>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
           </div>
 
           {/* Samples */}
@@ -167,8 +222,32 @@ export default function NewSessionPage() {
             </div>
 
             <div className="space-y-4">
+              {fields.length === 0 && (
+                <div className="text-center py-8 text-gray-500 bg-gray-50 rounded-lg border border-dashed border-gray-200">
+                  <p>暂无样品，请添加或从样品库选择</p>
+                </div>
+              )}
               {fields.map((field, index) => (
-                <div key={field.id} className="flex gap-4 items-start bg-gray-50 p-4 rounded-lg">
+                <div key={field.id} className="flex gap-4 items-start bg-gray-50 p-4 rounded-lg relative group">
+                  <div className="absolute -left-3 top-1/2 -translate-y-1/2 flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button
+                      type="button"
+                      onClick={() => index > 0 && move(index, index - 1)}
+                      disabled={index === 0}
+                      className="p-1 bg-white border border-gray-200 rounded shadow-sm text-gray-500 hover:text-amber-600 disabled:opacity-30 disabled:hover:text-gray-500"
+                    >
+                      <ArrowUp className="w-3 h-3" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => index < fields.length - 1 && move(index, index + 1)}
+                      disabled={index === fields.length - 1}
+                      className="p-1 bg-white border border-gray-200 rounded shadow-sm text-gray-500 hover:text-amber-600 disabled:opacity-30 disabled:hover:text-gray-500"
+                    >
+                      <ArrowDown className="w-3 h-3" />
+                    </button>
+                  </div>
+
                   <div className="flex-1 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                     <div className="space-y-1">
                       <label className="text-xs font-medium text-gray-500">样品名称</label>
@@ -183,6 +262,7 @@ export default function NewSessionPage() {
                       <label className="text-xs font-medium text-gray-500">产地</label>
                       <input
                         {...register(`samples.${index}.origin`)}
+                        list="origin-options"
                         className="w-full p-2 border border-gray-300 rounded bg-white text-sm focus:ring-2 focus:ring-amber-500 focus:border-transparent outline-none"
                         placeholder="例如：埃塞俄比亚"
                       />
@@ -192,6 +272,7 @@ export default function NewSessionPage() {
                       <label className="text-xs font-medium text-gray-500">处理法</label>
                       <input
                         {...register(`samples.${index}.process`)}
+                        list="process-options"
                         className="w-full p-2 border border-gray-300 rounded bg-white text-sm focus:ring-2 focus:ring-amber-500 focus:border-transparent outline-none"
                         placeholder="例如：水洗"
                       />
@@ -212,18 +293,39 @@ export default function NewSessionPage() {
                       </select>
                     </div>
                   </div>
-                  {fields.length > 1 && (
-                    <button
-                      type="button"
-                      onClick={() => remove(index)}
-                      className="mt-6 p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  )}
+                  <button
+                    type="button"
+                    onClick={() => remove(index)}
+                    className="mt-6 p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
                 </div>
               ))}
               {errors.samples && <p className="text-red-500 text-xs">{errors.samples.message}</p>}
+
+              {/* Datalists for auto-completion */}
+              <datalist id="origin-options">
+                <option value="云南普洱" />
+                <option value="云南孟连" />
+                <option value="埃塞俄比亚" />
+                <option value="哥伦比亚" />
+                <option value="肯尼亚" />
+                <option value="巴西" />
+                <option value="巴拿马" />
+                <option value="印度尼西亚" />
+                <option value="危地马拉" />
+                <option value="哥斯达黎加" />
+              </datalist>
+              <datalist id="process-options">
+                <option value="水洗" />
+                <option value="日晒" />
+                <option value="蜜处理" />
+                <option value="厌氧水洗" />
+                <option value="厌氧日晒" />
+                <option value="湿刨法" />
+                <option value="二氧化碳浸渍" />
+              </datalist>
             </div>
           </div>
 

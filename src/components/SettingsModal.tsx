@@ -11,11 +11,11 @@ interface SettingsModalProps {
 
 export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   const [config, setConfig] = useState({
-    appId: '',
-    appSecret: '',
-    appToken: '',
-    tableId: '',
-    sampleTableId: '',
+    appId: 'cli_a9224facb0b89bdf',
+    appSecret: 'UljtNgtWlxpe2Qe5vI3qPedXVMQfhXcx',
+    appToken: 'KWl2bVHgEadrB3sV0rzcGQ3Hnog',
+    tableId: 'tblMG2e1rOdQnFNJ',
+    sampleTableId: 'tblFJKzxagGpVUoP',
     cupperName: '', // Added cupperName
   });
   const [testStatus, setTestStatus] = useState<'idle' | 'testing' | 'success' | 'error'>('idle');
@@ -30,6 +30,16 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
       } catch (e) {
         console.error("Failed to parse saved config");
       }
+    } else {
+      // Use defaults if no saved config
+      setConfig({
+        appId: 'cli_a9224facb0b89bdf',
+        appSecret: 'UljtNgtWlxpe2Qe5vI3qPedXVMQfhXcx',
+        appToken: 'KWl2bVHgEadrB3sV0rzcGQ3Hnog',
+        tableId: 'tblMG2e1rOdQnFNJ',
+        sampleTableId: 'tblFJKzxagGpVUoP',
+        cupperName: '',
+      });
     }
   }, [isOpen]);
 
