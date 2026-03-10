@@ -193,6 +193,19 @@ export default function SessionDetailPage() {
         scale: 2, // Higher quality
         useCORS: true, // Attempt to handle CORS images if any
         logging: false,
+        onclone: (document) => {
+          // Force styles on the cloned element to avoid lab() colors
+          const el = document.getElementById('share-card');
+          if (el) {
+            el.style.backgroundColor = '#ffffff';
+            el.style.color = '#000000';
+            // Force text colors for specific elements if needed
+            const texts = el.querySelectorAll('*');
+            texts.forEach((t: any) => {
+               // Optional: ensure text is rendered with hex colors
+            });
+          }
+        }
       });
       
       const link = document.createElement('a');
@@ -441,32 +454,36 @@ export default function SessionDetailPage() {
             
             <div className="p-6 space-y-6 flex flex-col items-center">
               {/* Share Card Area */}
-              <div id="share-card" className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm w-full space-y-4">
+              <div 
+                id="share-card" 
+                className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm w-full space-y-4"
+                style={{ backgroundColor: '#ffffff', color: '#000000' }}
+              >
                 <div className="text-center space-y-1">
-                  <h3 className="font-bold text-lg text-gray-900">{session.name}</h3>
-                  <p className="text-sm text-gray-500">{new Date(session.cuppingDate).toLocaleDateString()}</p>
+                  <h3 className="font-bold text-lg" style={{ color: '#111827' }}>{session.name}</h3>
+                  <p className="text-sm" style={{ color: '#6b7280' }}>{new Date(session.cuppingDate).toLocaleDateString()}</p>
                 </div>
 
-                <div className="border-t border-b border-gray-100 py-4 space-y-2">
+                <div className="border-t border-b border-gray-100 py-4 space-y-2" style={{ borderColor: '#f3f4f6' }}>
                   <div className="flex justify-between text-sm">
-                    <span className="text-gray-500">样品数量</span>
-                    <span className="font-medium">{session.samples.length} 支</span>
+                    <span style={{ color: '#6b7280' }}>样品数量</span>
+                    <span className="font-medium" style={{ color: '#111827' }}>{session.samples.length} 支</span>
                   </div>
                   <div className="flex justify-between text-sm">
-                    <span className="text-gray-500">模式</span>
-                    <span className="font-medium text-amber-600">
+                    <span style={{ color: '#6b7280' }}>模式</span>
+                    <span className="font-medium" style={{ color: '#d97706' }}>
                       {session.blindMode ? '盲测 (Blind)' : '公开 (Open)'}
                     </span>
                   </div>
                 </div>
 
                 <div className="flex justify-center py-2">
-                  <div className="p-2 bg-white rounded-lg border border-gray-100">
+                  <div className="p-2 bg-white rounded-lg border border-gray-100" style={{ backgroundColor: '#ffffff', borderColor: '#f3f4f6' }}>
                     <QRCodeSVG value={getShareUrl()} size={180} />
                   </div>
                 </div>
                 
-                <p className="text-center text-xs text-gray-400">
+                <p className="text-center text-xs" style={{ color: '#9ca3af' }}>
                   使用 Coffee Cupping Tool 扫码或访问链接加入
                 </p>
               </div>
