@@ -6,7 +6,7 @@ import { useSessions } from '@/lib/context';
 import { SessionWithSamples, CuppingScore } from '@/lib/types';
 import ScoringForm from '@/components/ScoringForm';
 import SettingsModal from '@/components/SettingsModal';
-import { ArrowLeft, RefreshCw, CheckCircle, Settings, Share2, X } from 'lucide-react';
+import { ArrowLeft, RefreshCw, CheckCircle, Settings, Share2, X, Eye, EyeOff } from 'lucide-react';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { v4 as uuidv4 } from 'uuid';
@@ -24,6 +24,7 @@ export default function SessionDetailPage() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isShareOpen, setIsShareOpen] = useState(false);
   const [dirtySampleId, setDirtySampleId] = useState<string | null>(null);
+  const [showBlindMap, setShowBlindMap] = useState(false);
 
   const sessionId = params.id as string;
 
@@ -204,42 +205,82 @@ export default function SessionDetailPage() {
       <div className="max-w-4xl mx-auto space-y-6">
         
         {/* Header */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="flex items-center gap-4">
-            <Link href="/" className="p-2 hover:bg-gray-100 rounded-full transition-colors">
-              <ArrowLeft className="w-5 h-5 text-gray-600" />
-            </Link>
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">{session.name}</h1>
-              <div className="flex items-center gap-2 text-sm text-gray-500">
-                <span>杯测日期: {new Date(session.cuppingDate).toLocaleDateString()}</span>
-                <span className={`px-2 py-0.5 rounded-full text-xs ${
-                  session.status === 'synced' ? 'bg-blue-100 text-blue-700' : 'bg-yellow-100 text-yellow-700'
-                }`}>
-                  {session.status === 'completed' ? '已完成' :
-                   session.status === 'synced' ? '已同步' : '草稿'}
-                </span>
+        <div className="flex flex-col gap-4">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <Link href="/" className="p-2 hover:bg-gray-100 rounded-full transition-colors">
+                <ArrowLeft className="w-5 h-5 text-gray-600" />
+              </Link>
+              <div>
+                <h1 className="text-2xl font-bold text-gray-900">{session.name}</h1>
+                <div className="flex items-center gap-2 text-sm text-gray-500">
+                  <span>杯测日期: {new Date(session.cuppingDate).toLocaleDateString()}</span>
+                  <span className={`px-2 py-0.5 rounded-full text-xs ${
+                    session.status === 'synced' ? 'bg-blue-100 text-blue-700' : 'bg-yellow-100 text-yellow-700'
+                  }`}>
+                    {session.status === 'completed' ? '已完成' :
+                     session.status === 'synced' ? '已同步' : '草稿'}
+                  </span>
+                </div>
               </div>
             </div>
+            
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setIsShareOpen(true)}
+                className="p-2 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 rounded-lg shadow-sm transition-colors"
+                title="分享会话"
+              >
+                <Share2 className="w-4 h-4" />
+              </button>
+              <button
+                onClick={handleSync}
+                disabled={isSyncing}
+                className="flex items-center gap-2 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 px-4 py-2 rounded-lg shadow-sm transition-colors disabled:opacity-50"
+              >
+                {isSyncing ? <RefreshCw className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+                {session.status === 'synced' ? '重新同步至飞书' : '同步至飞书'}
+              </button>
+            </div>
           </div>
-          
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setIsShareOpen(true)}
-              className="p-2 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 rounded-lg shadow-sm transition-colors"
-              title="分享会话"
-            >
-              <Share2 className="w-4 h-4" />
-            </button>
-            <button
-              onClick={handleSync}
-              disabled={isSyncing}
-              className="flex items-center gap-2 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 px-4 py-2 rounded-lg shadow-sm transition-colors disabled:opacity-50"
-            >
-              {isSyncing ? <RefreshCw className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
-              {session.status === 'synced' ? '重新同步至飞书' : '同步至飞书'}
-            </button>
-          </div>
+
+          {/* Blind Mode Sample Map (Collapsible) */}
+          {session.blindMode && (
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+              <button
+                onClick={() => setShowBlindMap(!showBlindMap)}
+                className="w-full flex items-center justify-between p-4 bg-gray-50 hover:bg-gray-100 transition-colors"
+              >
+                <div className="flex items-center gap-2 font-medium text-gray-900">
+                  {showBlindMap ? <EyeOff className="w-4 h-4 text-gray-500" /> : <Eye className="w-4 h-4 text-gray-500" />}
+                  {showBlindMap ? '隐藏样品对照表' : '查看样品对照表 (准备阶段)'}
+                </div>
+                <span className="text-xs text-gray-500">
+                  {showBlindMap ? '点击折叠' : '点击展开查看真实样品信息'}
+                </span>
+              </button>
+              
+              {showBlindMap && (
+                <div className="p-4 border-t border-gray-100 animate-in slide-in-from-top-2">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                    {session.samples.map((sample, index) => (
+                      <div key={sample.id} className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg border border-gray-100">
+                        <div className="flex items-center justify-center w-8 h-8 rounded-full bg-amber-100 text-amber-700 font-bold text-sm shrink-0">
+                          {getSampleLabel(sample, index)}
+                        </div>
+                        <div className="min-w-0">
+                          <div className="font-medium text-gray-900 truncate">{sample.name}</div>
+                          <div className="text-xs text-gray-500 truncate">
+                            {sample.origin} · {sample.process}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Sample Tabs */}

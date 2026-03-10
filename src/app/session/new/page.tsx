@@ -308,6 +308,9 @@ export default function NewSessionPage() {
               <datalist id="origin-options">
                 <option value="云南普洱" />
                 <option value="云南孟连" />
+                <option value="云南澜沧" />
+                <option value="云南保山" />
+                <option value="云南临沧" />
                 <option value="埃塞俄比亚" />
                 <option value="哥伦比亚" />
                 <option value="肯尼亚" />
