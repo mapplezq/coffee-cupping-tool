@@ -222,12 +222,12 @@ export default function SessionDetailPage() {
       if (!ctx) return;
 
       // Set canvas size (e.g. 600px width, dynamic height)
-      const width = 600;
-      const padding = 40;
-      const headerHeight = 120;
-      const infoHeight = 100;
-      const qrSize = 240;
-      const footerHeight = 60;
+      const width = 800;
+      const padding = 60;
+      const headerHeight = 160;
+      const infoHeight = 140;
+      const qrSize = 360;
+      const footerHeight = 80;
       const height = headerHeight + infoHeight + qrSize + footerHeight + padding * 2;
 
       canvas.width = width;
@@ -239,18 +239,18 @@ export default function SessionDetailPage() {
 
       // Draw Title
       ctx.fillStyle = '#111827';
-      ctx.font = 'bold 32px sans-serif';
+      ctx.font = 'bold 42px sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillText(session.name, width / 2, padding + 50);
+      ctx.fillText(session.name, width / 2, padding + 60);
 
       // Draw Date
       ctx.fillStyle = '#6b7280';
-      ctx.font = '20px sans-serif';
-      ctx.fillText(new Date(session.cuppingDate).toLocaleDateString(), width / 2, padding + 90);
+      ctx.font = '28px sans-serif';
+      ctx.fillText(new Date(session.cuppingDate).toLocaleDateString(), width / 2, padding + 110);
 
       // Draw Separator
       ctx.strokeStyle = '#f3f4f6';
-      ctx.lineWidth = 2;
+      ctx.lineWidth = 3;
       ctx.beginPath();
       ctx.moveTo(padding, padding + headerHeight);
       ctx.lineTo(width - padding, padding + headerHeight);
@@ -258,25 +258,25 @@ export default function SessionDetailPage() {
 
       // Draw Info Rows
       ctx.textAlign = 'left';
-      ctx.font = '24px sans-serif';
+      ctx.font = '32px sans-serif';
       
       // Sample Count
       ctx.fillStyle = '#6b7280';
-      ctx.fillText('样品数量', padding, padding + headerHeight + 50);
+      ctx.fillText('样品数量', padding, padding + headerHeight + 60);
       ctx.textAlign = 'right';
       ctx.fillStyle = '#111827';
-      ctx.font = 'bold 24px sans-serif';
-      ctx.fillText(`${session.samples.length} 支`, width - padding, padding + headerHeight + 50);
+      ctx.font = 'bold 32px sans-serif';
+      ctx.fillText(`${session.samples.length} 支`, width - padding, padding + headerHeight + 60);
 
       // Mode
       ctx.textAlign = 'left';
       ctx.fillStyle = '#6b7280';
-      ctx.font = '24px sans-serif';
-      ctx.fillText('模式', padding, padding + headerHeight + 90);
+      ctx.font = '32px sans-serif';
+      ctx.fillText('模式', padding, padding + headerHeight + 110);
       ctx.textAlign = 'right';
       ctx.fillStyle = '#d97706'; // Amber color
-      ctx.font = 'bold 24px sans-serif';
-      ctx.fillText(session.blindMode ? '盲测 (Blind)' : '公开 (Open)', width - padding, padding + headerHeight + 90);
+      ctx.font = 'bold 32px sans-serif';
+      ctx.fillText(session.blindMode ? '盲测 (Blind)' : '公开 (Open)', width - padding, padding + headerHeight + 110);
 
       // Draw Separator
       ctx.strokeStyle = '#f3f4f6';
@@ -286,24 +286,36 @@ export default function SessionDetailPage() {
       ctx.stroke();
 
       // Generate QR Code
-      const qrDataUrl = await QRCode.toDataURL(getShareUrl(), { margin: 1, width: qrSize });
+      const qrDataUrl = await QRCode.toDataURL(getShareUrl(), { margin: 2, width: qrSize, color: { dark: '#000000', light: '#ffffff' } });
       const qrImage = new Image();
       qrImage.onload = async () => {
         // Draw QR Code centered
         const qrX = (width - qrSize) / 2;
-        const qrY = padding + headerHeight + infoHeight + 20;
+        const qrY = padding + headerHeight + infoHeight + 30;
         ctx.drawImage(qrImage, qrX, qrY, qrSize, qrSize);
 
         // Draw Footer Text
         ctx.textAlign = 'center';
         ctx.fillStyle = '#9ca3af';
-        ctx.font = '16px sans-serif';
+        ctx.font = '20px sans-serif';
         ctx.fillText('使用 Coffee Cupping Tool 扫码或访问链接加入', width / 2, height - padding);
 
         // --- Optimized Sharing Logic ---
         
-        // 1. Try Web Share API (Mobile Native Share)
-        if (navigator.share) {
+        // 1. Check User Agent
+        const ua = navigator.userAgent || '';
+        const isWeChat = /MicroMessenger/i.test(ua);
+        const isMobile = /iPhone|iPad|iPod|Android/i.test(ua);
+
+        // 2. Data URL
+        const dataUrl = canvas.toDataURL('image/png');
+
+        // 3. Logic Branch
+        if (isWeChat) {
+          // WeChat: Force preview modal (Web Share often fails for files)
+          setPreviewImage(dataUrl);
+        } else if (navigator.share && isMobile) {
+          // Other Mobile: Try Web Share API
           try {
             const blob = await new Promise<Blob | null>(resolve => canvas.toBlob(resolve, 'image/png'));
             if (blob) {
@@ -315,23 +327,13 @@ export default function SessionDetailPage() {
                   title: '杯测邀请',
                   text: `邀请您参加杯测：${session.name}`,
                 });
-                return; // Success, exit
+                return; 
               }
             }
           } catch (e) {
-            console.warn('Web Share API failed, falling back to download/preview', e);
+            console.warn('Web Share API failed, falling back to preview', e);
+            setPreviewImage(dataUrl); // Fallback to preview
           }
-        }
-
-        // 2. Fallback: Data URL
-        const dataUrl = canvas.toDataURL('image/png');
-
-        // 3. Check if Mobile/WeChat (User Agent)
-        const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-        
-        if (isMobile) {
-          // Show preview modal for long-press saving
-          setPreviewImage(dataUrl);
         } else {
           // Desktop: Direct download
           const link = document.createElement('a');
