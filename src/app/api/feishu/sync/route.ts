@@ -4,10 +4,17 @@ import { SessionWithSamples } from '@/lib/types';
 
 export async function POST(request: Request) {
   try {
-    const { session, appToken, tableId, appId, appSecret } = await request.json();
+    const { session, tableId: customTableId } = await request.json();
 
-    if (!session || !appToken || !tableId) {
-      return NextResponse.json({ error: 'Missing required parameters' }, { status: 400 });
+    // Use environment variables for sensitive data
+    const appId = process.env.FEISHU_APP_ID;
+    const appSecret = process.env.FEISHU_APP_SECRET;
+    const appToken = process.env.FEISHU_APP_TOKEN;
+    const tableId = customTableId || process.env.FEISHU_TABLE_ID;
+
+    if (!session || !appId || !appSecret || !appToken || !tableId) {
+      console.error("Missing config:", { hasSession: !!session, hasAppId: !!appId, hasAppSecret: !!appSecret, hasAppToken: !!appToken, hasTableId: !!tableId });
+      return NextResponse.json({ error: 'Missing configuration. Please check server environment variables.' }, { status: 500 });
     }
 
     const records = (session as SessionWithSamples).samples.map(sample => {

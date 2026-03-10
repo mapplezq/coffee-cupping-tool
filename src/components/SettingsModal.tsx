@@ -11,9 +11,6 @@ interface SettingsModalProps {
 
 export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   const [config, setConfig] = useState({
-    appId: 'cli_a9224facb0b89bdf',
-    appSecret: 'UljtNgtWlxpe2Qe5vI3qPedXVMQfhXcx',
-    appToken: 'KWl2bVHgEadrB3sV0rzcGQ3Hnog',
     tableId: 'tblMG2e1rOdQnFNJ',
     sampleTableId: 'tblFJKzxagGpVUoP',
     cupperName: '', // Added cupperName
@@ -33,9 +30,6 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
     } else {
       // Use defaults if no saved config
       setConfig({
-        appId: 'cli_a9224facb0b89bdf',
-        appSecret: 'UljtNgtWlxpe2Qe5vI3qPedXVMQfhXcx',
-        appToken: 'KWl2bVHgEadrB3sV0rzcGQ3Hnog',
         tableId: 'tblMG2e1rOdQnFNJ',
         sampleTableId: 'tblFJKzxagGpVUoP',
         cupperName: '',
@@ -50,9 +44,9 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   };
 
   const handleTestConnection = async () => {
-    if (!config.appId || !config.appSecret || !config.appToken || !config.tableId) {
+    if (!config.tableId) {
       setTestStatus('error');
-      setTestMessage('请先填写所有飞书配置项');
+      setTestMessage('请先填写Table ID');
       return;
     }
 
@@ -125,37 +119,7 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
             
             <FeishuGuide />
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-1">
-                <label className="text-sm font-medium text-gray-700">App ID</label>
-                <input
-                  type="text"
-                  value={config.appId}
-                  onChange={(e) => setConfig({ ...config, appId: e.target.value })}
-                  className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 outline-none font-mono text-sm"
-                  placeholder="cli_..."
-                />
-              </div>
-              <div className="space-y-1">
-                <label className="text-sm font-medium text-gray-700">App Secret</label>
-                <input
-                  type="password"
-                  value={config.appSecret}
-                  onChange={(e) => setConfig({ ...config, appSecret: e.target.value })}
-                  className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 outline-none font-mono text-sm"
-                  placeholder="App Secret"
-                />
-              </div>
-              <div className="space-y-1">
-                <label className="text-sm font-medium text-gray-700">多维表格 App Token</label>
-                <input
-                  type="text"
-                  value={config.appToken}
-                  onChange={(e) => setConfig({ ...config, appToken: e.target.value })}
-                  className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 outline-none font-mono text-sm"
-                  placeholder="URL中的Token"
-                />
-              </div>
+            <div className="grid grid-cols-1 gap-4">
               <div className="space-y-1">
                 <label className="text-sm font-medium text-gray-700">数据表 ID (tableId)</label>
                 <input

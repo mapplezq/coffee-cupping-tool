@@ -4,10 +4,20 @@ import { GlobalSample } from '@/lib/types';
 
 export async function POST(request: Request) {
   try {
-    const { appId, appSecret, appToken, sampleTableId, samples } = await request.json();
+    const { sampleTableId: customSampleTableId, samples } = await request.json();
+
+    // Use environment variables for sensitive data
+    const appId = process.env.FEISHU_APP_ID;
+    const appSecret = process.env.FEISHU_APP_SECRET;
+    const appToken = process.env.FEISHU_APP_TOKEN;
+    const sampleTableId = customSampleTableId || process.env.FEISHU_SAMPLE_TABLE_ID;
+
+    if (!appId || !appSecret || !appToken) {
+        return NextResponse.json({ error: 'Server configuration error: Missing Feishu credentials' }, { status: 500 });
+    }
 
     if (!sampleTableId) {
-      return NextResponse.json({ error: '请在设置中配置样品表 ID (sampleTableId)' }, { status: 400 });
+      return NextResponse.json({ error: '请在设置中配置样品表 ID (sampleTableId) 或联系管理员配置环境变量' }, { status: 400 });
     }
 
     if (!samples || !Array.isArray(samples) || samples.length === 0) {
