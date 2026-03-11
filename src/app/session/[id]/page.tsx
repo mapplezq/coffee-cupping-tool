@@ -179,24 +179,14 @@ export default function SessionDetailPage() {
       const savedConfig = localStorage.getItem('feishu_config');
       const config = savedConfig ? JSON.parse(savedConfig) : {};
       
-      const appToken = config.appToken || process.env.NEXT_PUBLIC_FEISHU_APP_TOKEN;
-      const tableId = config.tableId || process.env.NEXT_PUBLIC_FEISHU_TABLE_ID;
-      const appId = config.appId;
-      const appSecret = config.appSecret;
-
-      if (!appToken || !tableId) {
-        throw new Error('请先配置飞书同步信息（点击右上角设置图标）');
-      }
+      const tableId = config.tableId; // Frontend only provides optional tableId
 
       const response = await fetch('/api/feishu/sync', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           session,
-          appToken,
           tableId,
-          appId,
-          appSecret,
         })
       });
 
@@ -216,7 +206,10 @@ export default function SessionDetailPage() {
       alert('同步成功！');
     } catch (error: any) {
       console.error("Sync error:", error);
-      alert(`同步失败: ${error.message}`);
+      const errorMessage = error.message.includes('Missing configuration') || error.message.includes('Server configuration error')
+        ? '同步失败：服务器未配置飞书密钥，请联系管理员或返回首页设置。'
+        : `同步失败: ${error.message}`;
+      alert(errorMessage);
     } finally {
       setIsSyncing(false);
     }
