@@ -173,8 +173,20 @@ export default function ScoringForm({ sample, onSave, isSaving, onDirtyChange }:
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        
         {/* Sensory Attributes */}
         <div className="space-y-6">
+          {/* Notes (Moved to top) */}
+          <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100">
+            <label className="text-sm font-medium text-gray-700 mb-2 block">风味描述 / 备注</label>
+            <textarea
+              {...control.register('notes')}
+              rows={3}
+              className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent outline-none text-sm"
+              placeholder="先记录干/湿香，啜吸风味..."
+            />
+          </div>
+
           <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">感官指标</h3>
           {attributes.map((attr) => (
             <div key={attr.name} className="bg-white p-4 rounded-lg shadow-sm border border-gray-100">
@@ -282,17 +294,6 @@ export default function ScoringForm({ sample, onSave, isSaving, onDirtyChange }:
                  </div>
                </div>
              </div>
-          </div>
-
-          {/* Notes */}
-          <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100">
-            <label className="text-sm font-medium text-gray-700 mb-2 block">风味描述</label>
-            <textarea
-              {...control.register('notes')}
-              rows={4}
-              className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent outline-none text-sm"
-              placeholder="描述风味特征..."
-            />
           </div>
 
         </div>
