@@ -267,7 +267,7 @@ export default function ScoringForm({ sample, onSave, isSaving, onDirtyChange }:
         <div className="space-y-8">
           
           <div className="space-y-6">
-            <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">技术指标</h3>
+            <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">基础指标</h3>
             {technicalAttributes.map((attr) => (
               <div key={attr.name} className="bg-white p-4 rounded-lg shadow-sm border border-gray-100">
                 <div className="flex justify-between mb-2">

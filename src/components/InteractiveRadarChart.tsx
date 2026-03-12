@@ -36,7 +36,7 @@ export default function InteractiveRadarChart({ data, onChange, size = 320 }: Ra
   const [activeAttribute, setActiveAttribute] = useState<string | null>(null);
 
   const center = size / 2;
-  const radius = (size / 2) - 40; // Leave padding for labels
+  const radius = (size / 2) - 50; // Increased padding from 40 to 50 to prevent label cutoff
   const angleStep = (Math.PI * 2) / ATTRIBUTES.length;
 
   // Helper: Value to Radius
@@ -77,9 +77,13 @@ export default function InteractiveRadarChart({ data, onChange, size = 320 }: Ra
     const targetIndex = index !== null ? index : (activeAttribute ? ATTRIBUTES.findIndex(a => a.key === activeAttribute) : -1);
     if (targetIndex === -1) return;
 
-    // Only prevent default on touch events to allow scrolling on non-chart areas, 
-    // but here we are dragging, so preventing default is usually good.
-    // e.preventDefault(); 
+    // Prevent scrolling ONLY when dragging a point
+    if (activeAttribute || index !== null) {
+      // Check if event is cancelable before preventing default (passive event listeners issue)
+      if (e.cancelable) {
+        e.preventDefault();
+      }
+    }
     
     const svgRect = svgRef.current.getBoundingClientRect();
     const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
@@ -103,9 +107,9 @@ export default function InteractiveRadarChart({ data, onChange, size = 320 }: Ra
     // Snap to nearest 0.25
     let snappedValue = Math.round(newValue * 4) / 4;
     
-    // Stronger snap to integers (e.g. 8.0)
-    // If value is very close to an integer (within 0.1), snap to it
-    if (Math.abs(newValue - Math.round(newValue)) < 0.1) {
+    // Stronger snap to integers (e.g. 8.0, 9.0) with larger threshold
+    // Increased threshold from 0.1 to 0.15 to make it easier to hit integers
+    if (Math.abs(newValue - Math.round(newValue)) < 0.15) {
       snappedValue = Math.round(newValue);
     }
 
@@ -118,7 +122,7 @@ export default function InteractiveRadarChart({ data, onChange, size = 320 }: Ra
         ref={svgRef}
         width={size} 
         height={size} 
-        className="overflow-visible"
+        className="overflow-visible touch-pan-y" // Allow vertical scrolling
         onTouchMove={(e) => activeAttribute && handleInteraction(e)}
         onMouseMove={(e) => activeAttribute && e.buttons === 1 && handleInteraction(e)}
         onMouseUp={() => setActiveAttribute(null)}
@@ -176,25 +180,18 @@ export default function InteractiveRadarChart({ data, onChange, size = 320 }: Ra
 
         {/* Data Polygon with Gradient */}
         <defs>
-          <radialGradient id="radarGradient" cx="50%" cy="50%" r="50%" fx="50%" fy="50%">
-            <stop offset="0%" stopColor="rgba(217, 119, 6, 0.4)" />
-            <stop offset="100%" stopColor="rgba(217, 119, 6, 0.1)" />
-          </radialGradient>
-          <filter id="glow">
-            <feGaussianBlur stdDeviation="2.5" result="coloredBlur"/>
-            <feMerge>
-              <feMergeNode in="coloredBlur"/>
-              <feMergeNode in="SourceGraphic"/>
-            </feMerge>
-          </filter>
+          <linearGradient id="radarGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" stopColor="rgba(217, 119, 6, 0.5)" />
+            <stop offset="100%" stopColor="rgba(217, 119, 6, 0.2)" />
+          </linearGradient>
         </defs>
 
         <motion.path
           d={polygonPath}
           fill="url(#radarGradient)" 
           stroke="#d97706"
-          strokeWidth="2.5"
-          filter="url(#glow)"
+          strokeWidth="3"
+          strokeLinejoin="round"
           initial={false}
           animate={{ d: polygonPath }}
           transition={{ type: "spring", stiffness: 300, damping: 30 }}
