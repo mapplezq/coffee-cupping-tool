@@ -29,6 +29,8 @@ export default function SessionDetailPage() {
   const [previewImage, setPreviewImage] = useState<string | null>(null);
 
   const [isGeneratingImage, setIsGeneratingImage] = useState(false);
+  const [isNameModalOpen, setIsNameModalOpen] = useState(false);
+  const [cupperNameInput, setCupperNameInput] = useState('');
 
   const [debugLog, setDebugLog] = useState<string[]>([]);
 
@@ -141,12 +143,19 @@ export default function SessionDetailPage() {
 
   const handleSaveScore = async (scoreData: Omit<CuppingScore, 'id' | 'sampleId' | 'createdAt' | 'cupperName'>) => {
     if (!activeSample) return;
+
+    // Check if cupper name is configured
+    const savedConfig = localStorage.getItem('feishu_config');
+    const config = savedConfig ? JSON.parse(savedConfig) : {};
+    
+    if (!config.cupperName) {
+      setIsNameModalOpen(true);
+      return;
+    }
+
     setIsSaving(true);
     try {
-      // Get cupper name from local storage
-      const savedConfig = localStorage.getItem('feishu_config');
-      const config = savedConfig ? JSON.parse(savedConfig) : {};
-      const cupperName = config.cupperName || 'Unknown';
+      const cupperName = config.cupperName;
 
       const updatedSample = {
         ...activeSample,
@@ -177,6 +186,19 @@ export default function SessionDetailPage() {
     } finally {
       setIsSaving(false);
     }
+  };
+
+  const handleSaveName = () => {
+    if (!cupperNameInput.trim()) return;
+    
+    const savedConfig = localStorage.getItem('feishu_config');
+    const config = savedConfig ? JSON.parse(savedConfig) : {};
+    
+    const newConfig = { ...config, cupperName: cupperNameInput.trim() };
+    localStorage.setItem('feishu_config', JSON.stringify(newConfig));
+    
+    setIsNameModalOpen(false);
+    alert('昵称设置成功！请再次点击“保存”按钮提交评分。');
   };
 
   const executeSync = async () => {
@@ -600,6 +622,39 @@ export default function SessionDetailPage() {
               <span className="font-medium">下一个</span>
               <ChevronRight className="w-5 h-5" />
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Name Input Modal */}
+      {isNameModalOpen && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-sm p-6 animate-in fade-in zoom-in duration-200">
+            <h3 className="text-lg font-bold text-gray-900 mb-2">👋 欢迎加入杯测</h3>
+            <p className="text-sm text-gray-500 mb-4">请设置您的称呼，以便记录评分数据。</p>
+            <input
+              type="text"
+              value={cupperNameInput}
+              onChange={(e) => setCupperNameInput(e.target.value)}
+              placeholder="请输入您的姓名或昵称"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg mb-4 focus:ring-2 focus:ring-amber-500 focus:border-transparent outline-none"
+              autoFocus
+            />
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={() => setIsNameModalOpen(false)}
+                className="px-4 py-2 text-gray-500 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                取消
+              </button>
+              <button
+                onClick={handleSaveName}
+                disabled={!cupperNameInput.trim()}
+                className="px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors disabled:opacity-50"
+              >
+                保存并继续
+              </button>
+            </div>
           </div>
         </div>
       )}

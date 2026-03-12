@@ -34,6 +34,7 @@ export default function NewSessionPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSampleModalOpen, setIsSampleModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest');
   const [selectedLibrarySamples, setSelectedLibrarySamples] = useState<string[]>([]);
 
   const { register, control, handleSubmit, watch, formState: { errors } } = useForm<SessionFormValues>({
@@ -108,10 +109,16 @@ export default function NewSessionPage() {
     );
   };
 
-  const filteredGlobalSamples = globalSamples.filter(s => 
-    s.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    s.origin.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredGlobalSamples = globalSamples
+    .filter(s => 
+      s.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      s.origin.toLowerCase().includes(searchTerm.toLowerCase())
+    )
+    .sort((a, b) => {
+      const dateA = new Date(a.createdAt || 0).getTime();
+      const dateB = new Date(b.createdAt || 0).getTime();
+      return sortOrder === 'newest' ? dateB - dateA : dateA - dateB;
+    });
 
   return (
     <div className="min-h-screen bg-neutral-50 p-4 md:p-8">
@@ -363,16 +370,26 @@ export default function NewSessionPage() {
               </button>
             </div>
             
-            <div className="p-4 border-b">
-              <div className="relative">
-                <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                <input
-                  type="text"
-                  placeholder="搜索样品..."
-                  className="w-full pl-9 pr-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                />
+            <div className="p-4 border-b space-y-3">
+              <div className="flex gap-2">
+                <div className="relative flex-1">
+                  <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                  <input
+                    type="text"
+                    placeholder="搜索样品..."
+                    className="w-full pl-9 pr-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                  />
+                </div>
+                <select
+                  value={sortOrder}
+                  onChange={(e) => setSortOrder(e.target.value as 'newest' | 'oldest')}
+                  className="px-3 py-2 border border-gray-200 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+                >
+                  <option value="newest">最新创建</option>
+                  <option value="oldest">最早创建</option>
+                </select>
               </div>
             </div>
 
