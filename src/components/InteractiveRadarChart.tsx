@@ -36,7 +36,7 @@ export default function InteractiveRadarChart({ data, onChange, size = 320 }: Ra
   const [activeAttribute, setActiveAttribute] = useState<string | null>(null);
 
   const center = size / 2;
-  const radius = (size / 2) - 50; // Increased padding from 40 to 50 to prevent label cutoff
+  const radius = (size / 2) - 60; // Increased padding from 50 to 60 to prevent label cutoff on small screens
   const angleStep = (Math.PI * 2) / ATTRIBUTES.length;
 
   // Helper: Value to Radius
@@ -69,25 +69,43 @@ export default function InteractiveRadarChart({ data, onChange, size = 320 }: Ra
     return `${i === 0 ? 'M' : 'L'} ${x},${y}`;
   }).join(' ') + ' Z';
 
+  // Handle Global Touch Move for smoother dragging
+  useEffect(() => {
+    const handleTouchMove = (e: TouchEvent) => {
+      if (activeAttribute) {
+        e.preventDefault(); // Prevent scrolling only when dragging
+        handleInteraction(e as any);
+      }
+    };
+    
+    const handleTouchEnd = () => {
+      setActiveAttribute(null);
+    };
+
+    if (activeAttribute) {
+      document.addEventListener('touchmove', handleTouchMove, { passive: false });
+      document.addEventListener('touchend', handleTouchEnd);
+      document.addEventListener('mouseup', handleTouchEnd);
+    }
+
+    return () => {
+      document.removeEventListener('touchmove', handleTouchMove);
+      document.removeEventListener('touchend', handleTouchEnd);
+      document.removeEventListener('mouseup', handleTouchEnd);
+    };
+  }, [activeAttribute]); // Re-bind when activeAttribute changes
+
   // Handle Drag interaction
-  const handleInteraction = (e: React.MouseEvent | React.TouchEvent, index: number | null = null) => {
+  const handleInteraction = (e: React.MouseEvent | React.TouchEvent | MouseEvent | TouchEvent, index: number | null = null) => {
     if (!svgRef.current) return;
     
     // Determine active index (either passed explicitly or from state)
     const targetIndex = index !== null ? index : (activeAttribute ? ATTRIBUTES.findIndex(a => a.key === activeAttribute) : -1);
     if (targetIndex === -1) return;
-
-    // Prevent scrolling ONLY when dragging a point
-    if (activeAttribute || index !== null) {
-      // Check if event is cancelable before preventing default (passive event listeners issue)
-      if (e.cancelable) {
-        e.preventDefault();
-      }
-    }
     
     const svgRect = svgRef.current.getBoundingClientRect();
-    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
-    const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
+    const clientX = 'touches' in e ? (e as any).touches[0].clientX : (e as any).clientX;
+    const clientY = 'touches' in e ? (e as any).touches[0].clientY : (e as any).clientY;
 
     const dx = clientX - svgRect.left - center;
     const dy = clientY - svgRect.top - center;
@@ -117,16 +135,14 @@ export default function InteractiveRadarChart({ data, onChange, size = 320 }: Ra
   };
 
   return (
-    <div className="flex flex-col items-center select-none touch-none">
+    <div className="flex flex-col items-center select-none">
       <svg 
         ref={svgRef}
         width={size} 
         height={size} 
-        className="overflow-visible touch-pan-y" // Allow vertical scrolling
-        onTouchMove={(e) => activeAttribute && handleInteraction(e)}
+        className="overflow-visible" 
         onMouseMove={(e) => activeAttribute && e.buttons === 1 && handleInteraction(e)}
         onMouseUp={() => setActiveAttribute(null)}
-        onTouchEnd={() => setActiveAttribute(null)}
       >
         {/* Background Grid (Concentric Polygons) */}
         {[0, 0.25, 0.5, 0.75, 1].map((step, i) => {
