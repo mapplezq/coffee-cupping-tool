@@ -5,10 +5,11 @@ import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Sample, CuppingScore, Defect } from '@/lib/types';
-import { Save, AlertCircle } from 'lucide-react';
+import { Save, AlertCircle, BarChart2, Activity } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 import { useDebouncedCallback } from 'use-debounce';
+import InteractiveRadarChart from './InteractiveRadarChart';
 
 const scoreSchema = z.object({
   fragrance: z.number().min(0).max(10),
@@ -35,6 +36,7 @@ interface ScoringFormProps {
 
 export default function ScoringForm({ sample, onSave, isSaving, onDirtyChange }: ScoringFormProps) {
   const [defects, setDefects] = useState<Defect[]>(sample.score?.defects || []);
+  const [viewMode, setViewMode] = useState<'slider' | 'radar'>('slider');
   
   const { control, handleSubmit, watch, setValue, reset, formState: { isDirty } } = useForm<ScoreFormValues>({
     resolver: zodResolver(scoreSchema),
@@ -187,30 +189,78 @@ export default function ScoringForm({ sample, onSave, isSaving, onDirtyChange }:
             />
           </div>
 
-          <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">感官指标</h3>
-          {attributes.map((attr) => (
-            <div key={attr.name} className="bg-white p-4 rounded-lg shadow-sm border border-gray-100">
-              <div className="flex justify-between mb-2">
-                <label className="text-sm font-medium text-gray-700">{attr.label}</label>
-                <span className="text-sm font-bold text-amber-700">{values[attr.name as keyof ScoreFormValues]}</span>
-              </div>
-              <Controller
-                name={attr.name as any}
-                control={control}
-                render={({ field }) => (
-                  <input
-                    type="range"
-                    min="6"
-                    max="10"
-                    step="0.25"
-                    className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-amber-600"
-                    {...field}
-                    onChange={(e) => field.onChange(parseFloat(e.target.value))}
-                  />
+          <div className="flex justify-between items-center border-b pb-2">
+            <h3 className="text-lg font-semibold text-gray-900">感官指标</h3>
+            <div className="flex bg-gray-100 p-1 rounded-lg">
+              <button
+                type="button"
+                onClick={() => setViewMode('slider')}
+                className={cn(
+                  "p-1.5 rounded-md transition-all",
+                  viewMode === 'slider' ? "bg-white text-amber-700 shadow-sm" : "text-gray-500 hover:text-gray-700"
                 )}
+                title="滑块模式"
+              >
+                <BarChart2 className="w-4 h-4" />
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewMode('radar')}
+                className={cn(
+                  "p-1.5 rounded-md transition-all",
+                  viewMode === 'radar' ? "bg-white text-amber-700 shadow-sm" : "text-gray-500 hover:text-gray-700"
+                )}
+                title="雷达图模式"
+              >
+                <Activity className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+
+          {viewMode === 'radar' ? (
+            <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100 flex justify-center">
+              <InteractiveRadarChart
+                data={{
+                  fragrance: values.fragrance,
+                  flavor: values.flavor,
+                  aftertaste: values.aftertaste,
+                  acidity: values.acidity,
+                  body: values.body,
+                  balance: values.balance,
+                  overall: values.overall,
+                }}
+                onChange={(key, val) => {
+                  setValue(key as any, val, { shouldDirty: true });
+                }}
               />
             </div>
-          ))}
+          ) : (
+            <div className="space-y-6">
+              {attributes.map((attr) => (
+                <div key={attr.name} className="bg-white p-4 rounded-lg shadow-sm border border-gray-100">
+                  <div className="flex justify-between mb-2">
+                    <label className="text-sm font-medium text-gray-700">{attr.label}</label>
+                    <span className="text-sm font-bold text-amber-700">{values[attr.name as keyof ScoreFormValues]}</span>
+                  </div>
+                  <Controller
+                    name={attr.name as any}
+                    control={control}
+                    render={({ field }) => (
+                      <input
+                        type="range"
+                        min="6"
+                        max="10"
+                        step="0.25"
+                        className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-amber-600"
+                        {...field}
+                        onChange={(e) => field.onChange(parseFloat(e.target.value))}
+                      />
+                    )}
+                  />
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Technical Attributes & Defects */}

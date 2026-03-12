@@ -39,6 +39,12 @@ export default function SessionDetailPage() {
 
   const sessionId = params.id as string;
 
+  // Helper for consistent date formatting to avoid hydration errors
+  const formatDate = (dateString: string) => {
+    const d = new Date(dateString);
+    return `${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}`;
+  };
+
   const getShareUrl = () => {
     if (!session) return '';
     const shareData = {
@@ -253,7 +259,7 @@ export default function SessionDetailPage() {
       // Draw Date
       ctx.fillStyle = '#6b7280';
       ctx.font = '28px sans-serif';
-      ctx.fillText(new Date(session.cuppingDate).toLocaleDateString(), width / 2, padding + 110);
+      ctx.fillText(formatDate(session.cuppingDate), width / 2, padding + 110);
 
       // Draw Separator
       ctx.strokeStyle = '#f3f4f6';
@@ -379,7 +385,7 @@ export default function SessionDetailPage() {
   const handleCopyLink = () => {
     if (!session) return;
     const url = getShareUrl();
-    const text = `☕️ 邀请您参加杯测会话\n\n📅 主题：${session.name}\n🕒 日期：${new Date(session.cuppingDate).toLocaleDateString()}\n🧪 样品数：${session.samples.length}支\n${session.blindMode ? '🕶️ 模式：盲测' : '📝 模式：公开'}\n\n👇 点击链接或保存二维码加入：\n${url}`;
+    const text = `☕️ 邀请您参加杯测会话\n\n📅 主题：${session.name}\n🕒 日期：${formatDate(session.cuppingDate)}\n🧪 样品数：${session.samples.length}支\n${session.blindMode ? '🕶️ 模式：盲测' : '📝 模式：公开'}\n\n👇 点击链接或保存二维码加入：\n${url}`;
     
     navigator.clipboard.writeText(text);
     alert('分享文案已复制！可直接粘贴发送给好友。');
@@ -421,7 +427,7 @@ export default function SessionDetailPage() {
               <div>
                 <h1 className="text-2xl font-bold text-gray-900">{session.name}</h1>
                 <div className="flex items-center gap-2 text-sm text-gray-500">
-                  <span>杯测日期: {new Date(session.cuppingDate).toLocaleDateString()}</span>
+                  <span>杯测日期: {formatDate(session.cuppingDate)}</span>
                   <span className={`px-2 py-0.5 rounded-full text-xs ${
                     session.status === 'synced' ? 'bg-blue-100 text-blue-700' : 'bg-yellow-100 text-yellow-700'
                   }`}>
@@ -618,7 +624,7 @@ export default function SessionDetailPage() {
               >
                 <div className="text-center space-y-1">
                   <h3 className="font-bold text-lg" style={{ color: '#111827' }}>{session.name}</h3>
-                  <p className="text-sm" style={{ color: '#6b7280' }}>{new Date(session.cuppingDate).toLocaleDateString()}</p>
+                  <p className="text-sm" style={{ color: '#6b7280' }}>{formatDate(session.cuppingDate)}</p>
                 </div>
 
                 <div className="border-t border-b border-gray-100 py-4 space-y-2" style={{ borderColor: '#f3f4f6' }}>
