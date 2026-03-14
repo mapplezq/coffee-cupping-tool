@@ -340,6 +340,15 @@ export default function SessionDetailPage() {
                 我的结果
               </button>
               
+              <button
+                onClick={handleSync}
+                disabled={isSyncing}
+                className="flex items-center gap-1.5 px-3 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg shadow-sm transition-colors disabled:opacity-50 text-sm font-medium"
+              >
+                {isSyncing ? <RefreshCw className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+                {session.status === 'synced' ? '重新同步' : '同步至飞书'}
+              </button>
+              
               {!session.isGuest && (
                 <>
                   <Link
@@ -356,15 +365,6 @@ export default function SessionDetailPage() {
                   >
                     <Share2 className="w-4 h-4" />
                     邀请打分
-                  </button>
-                  
-                  <button
-                    onClick={handleSync}
-                    disabled={isSyncing}
-                    className="flex items-center gap-1.5 px-3 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg shadow-sm transition-colors disabled:opacity-50 text-sm font-medium"
-                  >
-                    {isSyncing ? <RefreshCw className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
-                    {session.status === 'synced' ? '重新同步' : '同步至飞书'}
                   </button>
                 </>
               )}
