@@ -13,7 +13,8 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   const [config, setConfig] = useState({
     tableId: 'tblMG2e1rOdQnFNJ',
     sampleTableId: 'tblFJKzxagGpVUoP',
-    cupperName: '', // Added cupperName
+    eventTableId: '', // Added eventTableId
+    cupperName: '', 
   });
   const [testStatus, setTestStatus] = useState<'idle' | 'testing' | 'success' | 'error'>('idle');
   const [testMessage, setTestMessage] = useState('');
@@ -32,6 +33,7 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
       setConfig({
         tableId: 'tblMG2e1rOdQnFNJ',
         sampleTableId: 'tblFJKzxagGpVUoP',
+        eventTableId: '',
         cupperName: '',
       });
     }
@@ -111,72 +113,17 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
 
           <div className="border-t border-gray-100"></div>
 
-          {/* Feishu Config */}
+          {/* Feishu Config - Hidden for normal users, hardcoded in backend */}
+          {/* 
           <div className="space-y-4">
             <h3 className="text-sm font-semibold text-gray-900 flex justify-between items-center">
               <span>飞书同步配置</span>
             </h3>
-            
-            <FeishuGuide />
-
-            <div className="grid grid-cols-1 gap-4">
-              <div className="space-y-1">
-                <label className="text-sm font-medium text-gray-700">数据表 ID (tableId)</label>
-                <input
-                  type="text"
-                  value={config.tableId}
-                  onChange={(e) => setConfig({ ...config, tableId: e.target.value })}
-                  className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 outline-none font-mono text-sm"
-                  placeholder="tbl..."
-                />
-              </div>
-              <div className="space-y-1">
-                <label className="text-sm font-medium text-gray-700">样品表 ID (sampleTableId)</label>
-                <input
-                  type="text"
-                  value={config.sampleTableId}
-                  onChange={(e) => setConfig({ ...config, sampleTableId: e.target.value })}
-                  className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 outline-none font-mono text-sm"
-                  placeholder="tbl... (可选)"
-                />
-              </div>
-            </div>
-
-            {/* Test Connection */}
-            <div className="flex items-center gap-4 pt-2">
-              <button
-                onClick={handleTestConnection}
-                disabled={testStatus === 'testing'}
-                className="px-4 py-2 text-sm bg-gray-100 text-gray-700 hover:bg-gray-200 rounded-lg font-medium transition-colors flex items-center gap-2"
-              >
-                {testStatus === 'testing' && <Loader2 className="w-4 h-4 animate-spin" />}
-                测试连接
-              </button>
-              
-              {testStatus === 'success' && (
-                <span className="text-sm text-green-600 flex items-center gap-1">
-                  <CheckCircle2 className="w-4 h-4" />
-                  {testMessage}
-                </span>
-              )}
-              
-              {testStatus === 'error' && (
-                <span className="text-sm text-red-600 flex items-center gap-1">
-                  <AlertCircle className="w-4 h-4" />
-                  {testMessage}
-                </span>
-              )}
-            </div>
-            
             <div className="bg-amber-50 p-4 rounded-lg text-xs text-amber-800 space-y-1">
-              <p className="font-bold">提示：</p>
-              <ul className="list-disc pl-4 space-y-1">
-                <li>配置将保存在您的浏览器本地，不会上传到我们的服务器。</li>
-                <li>确保飞书自建应用已启用“多维表格”权限并发布版本。</li>
-                <li>确保已将自建应用添加为该多维表格的可编辑成员。</li>
-              </ul>
+              <p>系统已预设内部/外部数据表，无需手动配置。</p>
             </div>
-          </div>
+          </div> 
+          */}
         </div>
 
         <div className="p-6 bg-gray-50 flex justify-end gap-3 border-t">

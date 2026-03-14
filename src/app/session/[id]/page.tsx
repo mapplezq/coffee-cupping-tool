@@ -6,13 +6,12 @@ import { useSessions } from '@/lib/context';
 import { SessionWithSamples, CuppingScore } from '@/lib/types';
 import ScoringForm from '@/components/ScoringForm';
 import SettingsModal from '@/components/SettingsModal';
-import { ArrowLeft, RefreshCw, CheckCircle, Settings, Share2, X, Eye, EyeOff, ChevronLeft, ChevronRight, Copy, Image as ImageIcon, Upload } from 'lucide-react';
+import { ArrowLeft, RefreshCw, CheckCircle, Settings, Share2, X, Eye, EyeOff, ChevronLeft, ChevronRight, Copy, BarChart3, ListChecks } from 'lucide-react';
 import Link from 'next/link';
-import { cn } from '@/lib/utils';
+import { cn, formatDate } from '@/lib/utils';
 import { v4 as uuidv4 } from 'uuid';
 import { QRCodeSVG } from 'qrcode.react';
 import LZString from 'lz-string';
-import QRCode from 'qrcode';
 
 export default function SessionDetailPage() {
   const params = useParams();
@@ -26,26 +25,12 @@ export default function SessionDetailPage() {
   const [isShareOpen, setIsShareOpen] = useState(false);
   const [dirtySampleId, setDirtySampleId] = useState<string | null>(null);
   const [showBlindMap, setShowBlindMap] = useState(false);
-  const [previewImage, setPreviewImage] = useState<string | null>(null);
 
-  const [isGeneratingImage, setIsGeneratingImage] = useState(false);
   const [isNameModalOpen, setIsNameModalOpen] = useState(false);
+  const [isResultModalOpen, setIsResultModalOpen] = useState(false);
   const [cupperNameInput, setCupperNameInput] = useState('');
 
-  const [debugLog, setDebugLog] = useState<string[]>([]);
-
-  const addLog = (msg: string) => {
-    console.log(msg);
-    setDebugLog(prev => [...prev, `${new Date().toLocaleTimeString()} - ${msg}`]);
-  };
-
   const sessionId = params.id as string;
-
-  // Helper for consistent date formatting to avoid hydration errors
-  const formatDate = (dateString: string) => {
-    const d = new Date(dateString);
-    return `${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}`;
-  };
 
   const getShareUrl = () => {
     if (!session) return '';
@@ -86,37 +71,7 @@ export default function SessionDetailPage() {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
-        {/* Image Preview Modal for Mobile/WeChat */}
-      {previewImage && (
-        <div className="fixed inset-0 bg-black/90 z-[60] flex flex-col items-center justify-center p-4 animate-in fade-in duration-200">
-          <div className="absolute top-4 right-4">
-            <button 
-              onClick={() => setPreviewImage(null)}
-              className="p-2 bg-white/10 text-white rounded-full hover:bg-white/20 transition-colors"
-            >
-              <X className="w-6 h-6" />
-            </button>
-          </div>
-          
-          <div className="flex-1 flex items-center justify-center w-full max-w-lg">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img 
-              src={previewImage} 
-              alt="Share Preview" 
-              className="max-w-full max-h-[80vh] rounded-lg shadow-2xl object-contain"
-            />
-          </div>
-          
-          <div className="mt-4 text-center text-white/80 space-y-1">
-            <p className="font-medium text-lg text-white flex items-center justify-center gap-2">
-              <Upload className="w-5 h-5" />
-              长按上方图片发送给朋友
-            </p>
-            <p className="text-sm">或保存到手机相册</p>
-          </div>
-        </div>
-      )}
-    </div>
+      </div>
     );
   }
 
@@ -207,14 +162,30 @@ export default function SessionDetailPage() {
       const savedConfig = localStorage.getItem('feishu_config');
       const config = savedConfig ? JSON.parse(savedConfig) : {};
       
-      const tableId = config.tableId; // Frontend only provides optional tableId
+      // We don't read tableId from localStorage here anymore if we want backend to handle it
+      // BUT, current backend implementation relies on `tableId` being passed in body.
+      // So we must pass SOMETHING or let backend handle default.
+      
+      // Since we want "backend hardcoded config", we should NOT pass tableId from here if it's not set.
+      // However, to keep backward compatibility with existing `sync` API which expects `tableId`,
+      // we can pass a flag or just let backend decide.
+      
+      // Simplest way: Pass session.type, and let backend decide tableId.
+      // But currently sync API reads `body.tableId`.
+      
+      // We will modify frontend to NOT send tableId (or send null), and backend to use default if null.
+      // OR, we send the session object which contains 'type', and backend uses that.
+
+      // Also send config (appId, appSecret, appToken) from localStorage if environment variables are not set on server
+      const { appId, appSecret, appToken } = config;
 
       const response = await fetch('/api/feishu/sync', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           session,
-          tableId,
+          config: { appId, appSecret, appToken }, // Pass config to backend
+          // tableId is optional now, backend will handle it based on session.type
         })
       });
 
@@ -240,167 +211,6 @@ export default function SessionDetailPage() {
       alert(errorMessage);
     } finally {
       setIsSyncing(false);
-    }
-  };
-
-  const handleShareAsImage = async () => {
-    if (!session) return;
-    setIsGeneratingImage(true);
-    setDebugLog([]); // Clear logs
-    addLog('Start generating image...');
-    
-    try {
-      // Create canvas
-      addLog('Creating canvas...');
-      const canvas = document.createElement('canvas');
-      const ctx = canvas.getContext('2d');
-      if (!ctx) throw new Error('Could not get canvas context');
-
-      // Set canvas size (e.g. 800px width, dynamic height)
-      const width = 800;
-      const padding = 60;
-      const headerHeight = 160;
-      const infoHeight = 140;
-      const qrSize = 360;
-      const footerHeight = 80;
-      const height = headerHeight + infoHeight + qrSize + footerHeight + padding * 2;
-
-      canvas.width = width;
-      canvas.height = height;
-
-      // Fill background
-      ctx.fillStyle = '#ffffff';
-      ctx.fillRect(0, 0, width, height);
-
-      // Draw Title
-      ctx.fillStyle = '#111827';
-      ctx.font = 'bold 42px sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillText(session.name, width / 2, padding + 60);
-
-      // Draw Date
-      ctx.fillStyle = '#6b7280';
-      ctx.font = '28px sans-serif';
-      ctx.fillText(formatDate(session.cuppingDate), width / 2, padding + 110);
-
-      // Draw Separator
-      ctx.strokeStyle = '#f3f4f6';
-      ctx.lineWidth = 3;
-      ctx.beginPath();
-      ctx.moveTo(padding, padding + headerHeight);
-      ctx.lineTo(width - padding, padding + headerHeight);
-      ctx.stroke();
-
-      // Draw Info Rows
-      ctx.textAlign = 'left';
-      ctx.font = '32px sans-serif';
-      
-      // Sample Count
-      ctx.fillStyle = '#6b7280';
-      ctx.fillText('样品数量', padding, padding + headerHeight + 60);
-      ctx.textAlign = 'right';
-      ctx.fillStyle = '#111827';
-      ctx.font = 'bold 32px sans-serif';
-      ctx.fillText(`${session.samples.length} 支`, width - padding, padding + headerHeight + 60);
-
-      // Mode
-      ctx.textAlign = 'left';
-      ctx.fillStyle = '#6b7280';
-      ctx.font = '32px sans-serif';
-      ctx.fillText('模式', padding, padding + headerHeight + 110);
-      ctx.textAlign = 'right';
-      ctx.fillStyle = '#d97706'; // Amber color
-      ctx.font = 'bold 32px sans-serif';
-      ctx.fillText(session.blindMode ? '盲测 (Blind)' : '公开 (Open)', width - padding, padding + headerHeight + 110);
-
-      // Draw Separator
-      ctx.strokeStyle = '#f3f4f6';
-      ctx.beginPath();
-      ctx.moveTo(padding, padding + headerHeight + infoHeight);
-      ctx.lineTo(width - padding, padding + headerHeight + infoHeight);
-      ctx.stroke();
-
-      // Generate QR Code
-      addLog('Generating QR code...');
-      const qrCanvas = document.createElement('canvas');
-      try {
-        await QRCode.toCanvas(qrCanvas, getShareUrl(), { margin: 2, width: qrSize, color: { dark: '#000000', light: '#ffffff' } });
-        addLog('QR code generated.');
-      } catch (qrError) {
-        throw new Error('Failed to generate QR code: ' + String(qrError));
-      }
-      
-      // Draw QR Code centered
-      const qrX = (width - qrSize) / 2;
-      const qrY = padding + headerHeight + infoHeight + 30;
-      ctx.drawImage(qrCanvas, qrX, qrY, qrSize, qrSize);
-
-      // Draw Footer Text
-      ctx.textAlign = 'center';
-      ctx.fillStyle = '#9ca3af';
-      ctx.font = '20px sans-serif';
-      ctx.fillText('使用 Coffee Cupping Tool 扫码或访问链接加入', width / 2, height - padding);
-
-      // --- Optimized Sharing Logic ---
-      
-      addLog('Converting canvas to blob...');
-      
-      // Try Web Share API with File first (Most modern mobile experience)
-      if (navigator.share && navigator.canShare) {
-        try {
-          const blob = await new Promise<Blob | null>(resolve => canvas.toBlob(resolve, 'image/png'));
-          if (blob) {
-            const file = new File([blob], `cupping-share-${session.name}.png`, { type: 'image/png' });
-            if (navigator.canShare({ files: [file] })) {
-              addLog('Invoking Web Share API...');
-              await navigator.share({
-                files: [file],
-                title: '杯测邀请',
-                text: `邀请您参加杯测：${session.name}`,
-              });
-              addLog('Share successful.');
-              return;
-            } else {
-              addLog('Web Share API does not support file sharing.');
-            }
-          } else {
-             addLog('Failed to create blob.');
-          }
-        } catch (shareError) {
-          addLog('Web Share API failed: ' + String(shareError));
-          // Continue to fallback
-        }
-      } else {
-        addLog('Web Share API not supported.');
-      }
-
-      // Fallback: Data URL
-      addLog('Generating Data URL...');
-      const dataUrl = canvas.toDataURL('image/png');
-
-      // Check device type
-      const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-      
-      if (isMobile) {
-        // Mobile: Show preview modal for long-press saving
-        setPreviewImage(dataUrl);
-        addLog('Preview modal opened (Mobile).');
-      } else {
-        // Desktop: Direct download
-        const link = document.createElement('a');
-        link.download = `杯测分享-${session.name}.png`;
-        link.href = dataUrl;
-        link.click();
-        addLog('Download triggered (Desktop).');
-      }
-
-    } catch (err) {
-      const errMsg = 'Error: ' + (err instanceof Error ? err.message : String(err));
-      console.error(errMsg);
-      addLog(errMsg);
-      alert('生成图片失败，请查看底部日志');
-    } finally {
-      setIsGeneratingImage(false);
     }
   };
 
@@ -434,8 +244,69 @@ export default function SessionDetailPage() {
   };
 
   return (
-    <div className="min-h-screen bg-neutral-50 p-4 md:p-8 pb-24">
-      <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
+    <>
+      {/* Results View - Rendered as a normal page flow to support native long screenshots */}
+      {isResultModalOpen && (
+        <div className="min-h-screen bg-white flex flex-col">
+          <div className="p-4 border-b flex justify-between items-center shrink-0 sticky top-0 bg-white z-10 shadow-sm">
+            <div className="flex flex-col">
+              <h2 className="text-xl font-bold text-gray-900">我的杯测结果</h2>
+              <span className="text-xs text-gray-500">{session.name}</span>
+            </div>
+            <button onClick={() => setIsResultModalOpen(false)} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
+              <X className="w-6 h-6 text-gray-600" />
+            </button>
+          </div>
+          
+          <div className="flex-1 p-4 max-w-2xl mx-auto w-full space-y-3 pb-24" style={{ backgroundColor: '#ffffff', color: '#000000' }}>
+            {[...session.samples]
+              .map((sample, index) => (
+              <div key={sample.id} className="p-4 rounded-xl border flex items-start gap-3" style={{ backgroundColor: '#f9fafb', borderColor: '#e5e7eb' }}>
+                  <div className="flex items-center justify-center w-8 h-8 rounded-full font-bold text-sm shrink-0 mt-1" style={{ backgroundColor: '#fef3c7', color: '#b45309' }}>
+                    {session.blindMode && session.blindLabelType === 'letter' 
+                      ? String.fromCharCode(65 + session.samples.indexOf(sample)) 
+                      : `${session.samples.indexOf(sample) + 1}`}
+                  </div>
+                  
+                  <div className="flex-1 min-w-0">
+                    <div className="flex justify-between items-start">
+                      <div className="min-w-0 pr-2">
+                        <div className="font-bold truncate" style={{ color: '#111827' }}>{sample.name}</div>
+                        <div className="text-xs" style={{ color: '#6b7280' }}>{sample.origin} · {sample.process}</div>
+                      </div>
+                      <div className="shrink-0 text-right">
+                        {sample.score ? (
+                          <div className="text-xl font-bold" style={{ color: '#d97706' }}>{sample.score.totalScore.toFixed(2)}</div>
+                        ) : (
+                          <span className="text-xs" style={{ color: '#9ca3af' }}>未评分</span>
+                        )}
+                      </div>
+                    </div>
+                    
+                    {(sample.score?.notes) && (
+                       <div className="text-sm p-3 rounded-lg border mt-2" style={{ color: '#78350f', backgroundColor: '#fffbeb', borderColor: '#fef3c7' }}>
+                         <span className="font-medium text-xs block mb-0.5" style={{ color: '#92400e' }}>风味描述:</span>
+                         {sample.score.notes}
+                       </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+              <div className="pt-4 text-center text-xs" style={{ color: '#9ca3af' }}>
+                生成时间: {new Date().toLocaleString('zh-CN')}
+              </div>
+          </div>
+
+          <div className="p-6 border-t bg-gray-50 mt-auto safe-area-bottom">
+            {/* Removed the hint text to avoid confusion on devices that don't support it */}
+          </div>
+        </div>
+      )}
+
+      {/* Main Content - Hidden when results are open to preserve state but allow results to dictate body height */}
+      <div style={{ display: isResultModalOpen ? 'none' : 'block' }}>
+        <div className="min-h-screen bg-neutral-50 p-4 md:p-8 pb-24">
+          <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
       
       <div className="max-w-4xl mx-auto space-y-6">
         
@@ -460,27 +331,48 @@ export default function SessionDetailPage() {
               </div>
             </div>
             
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <button
-                onClick={() => setIsShareOpen(true)}
-                className="p-2 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 rounded-lg shadow-sm transition-colors"
-                title="分享会话"
+                onClick={() => setIsResultModalOpen(true)}
+                className="flex items-center gap-1.5 px-3 py-2 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 rounded-lg shadow-sm transition-colors text-sm font-medium"
               >
-                <Share2 className="w-4 h-4" />
+                <ListChecks className="w-4 h-4" />
+                我的结果
               </button>
-              <button
-                onClick={handleSync}
-                disabled={isSyncing}
-                className="flex items-center gap-2 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 px-4 py-2 rounded-lg shadow-sm transition-colors disabled:opacity-50"
-              >
-                {isSyncing ? <RefreshCw className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
-                {session.status === 'synced' ? '重新同步至飞书' : '同步至飞书'}
-              </button>
+              
+              {!session.isGuest && (
+                <>
+                  <Link
+                    href={`/session/${sessionId}/report`}
+                    className="flex items-center gap-1.5 px-3 py-2 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 rounded-lg shadow-sm transition-colors text-sm font-medium"
+                  >
+                    <BarChart3 className="w-4 h-4" />
+                    汇总报告
+                  </Link>
+                  
+                  <button
+                    onClick={() => setIsShareOpen(true)}
+                    className="flex items-center gap-1.5 px-3 py-2 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 rounded-lg shadow-sm transition-colors text-sm font-medium"
+                  >
+                    <Share2 className="w-4 h-4" />
+                    邀请打分
+                  </button>
+                  
+                  <button
+                    onClick={handleSync}
+                    disabled={isSyncing}
+                    className="flex items-center gap-1.5 px-3 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg shadow-sm transition-colors disabled:opacity-50 text-sm font-medium"
+                  >
+                    {isSyncing ? <RefreshCw className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+                    {session.status === 'synced' ? '重新同步' : '同步至飞书'}
+                  </button>
+                </>
+              )}
             </div>
           </div>
 
           {/* Blind Mode Sample Map (Collapsible) */}
-          {session.blindMode && (
+          {session.blindMode && !session.isGuest && (
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
               <button
                 onClick={() => setShowBlindMap(!showBlindMap)}
@@ -488,7 +380,7 @@ export default function SessionDetailPage() {
               >
                 <div className="flex items-center gap-2 font-medium text-gray-900">
                   {showBlindMap ? <EyeOff className="w-4 h-4 text-gray-500" /> : <Eye className="w-4 h-4 text-gray-500" />}
-                  {showBlindMap ? '隐藏样品对照表' : '查看样品对照表 (准备阶段)'}
+                  {showBlindMap ? '隐藏样品对照表' : '查看样品对照表'}
                 </div>
                 <span className="text-xs text-gray-500">
                   {showBlindMap ? '点击折叠' : '点击展开查看真实样品信息'}
@@ -556,26 +448,16 @@ export default function SessionDetailPage() {
                    ) : (
                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
                        <div>
+                         <span className="text-gray-500 block">样品名称</span>
+                         <span className="font-medium text-gray-900">{activeSample.name}</span>
+                       </div>
+                       <div>
                          <span className="text-gray-500 block">产地</span>
                          <span className="font-medium text-gray-900">{activeSample.origin}</span>
                        </div>
                        <div>
                          <span className="text-gray-500 block">处理法</span>
                          <span className="font-medium text-gray-900">{activeSample.process}</span>
-                       </div>
-                       <div>
-                         <span className="text-gray-500 block">样品类型</span>
-                         <span className="font-medium text-gray-900">
-                          {
-                            activeSample.type === 'pre_shipment' ? '货前样' :
-                            activeSample.type === 'processing' ? '加工样' :
-                            activeSample.type === 'arrival' ? '到货样' :
-                            activeSample.type === 'sales' ? '可销售样' :
-                            activeSample.type === 'self_drawn' ? '自抽样' :
-                            activeSample.type === 'other' ? '其他' : 
-                            activeSample.type || '-'
-                          }
-                         </span>
                        </div>
                      </div>
                    )}
@@ -659,6 +541,63 @@ export default function SessionDetailPage() {
         </div>
       )}
 
+      {/* Results Modal */}
+      {isResultModalOpen && (
+        <div className="fixed inset-0 bg-white z-50 overflow-y-auto">
+          <div className="min-h-full flex flex-col">
+            <div className="p-4 border-b flex justify-between items-center shrink-0 sticky top-0 bg-white z-10 shadow-sm">
+              <div className="flex flex-col">
+                <h2 className="text-xl font-bold text-gray-900">我的杯测结果</h2>
+                <span className="text-xs text-gray-500">{session.name}</span>
+              </div>
+              <button onClick={() => setIsResultModalOpen(false)} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
+                <X className="w-6 h-6 text-gray-600" />
+              </button>
+            </div>
+            
+            <div className="flex-1 p-4 max-w-2xl mx-auto w-full space-y-3 pb-24">
+              {[...session.samples]
+                .map((sample, index) => (
+                <div key={sample.id} className="bg-gray-50 p-4 rounded-xl border border-gray-100 flex items-start gap-3">
+                    <div className="flex items-center justify-center w-8 h-8 rounded-full bg-amber-100 text-amber-700 font-bold text-sm shrink-0 mt-1">
+                      {session.blindMode && session.blindLabelType === 'letter' 
+                        ? String.fromCharCode(65 + session.samples.indexOf(sample)) 
+                        : `${session.samples.indexOf(sample) + 1}`}
+                    </div>
+                    
+                    <div className="flex-1 min-w-0">
+                      <div className="flex justify-between items-start">
+                        <div className="min-w-0 pr-2">
+                          <div className="font-bold text-gray-900 truncate">{sample.name}</div>
+                          <div className="text-xs text-gray-500">{sample.origin} · {sample.process}</div>
+                        </div>
+                        <div className="shrink-0 text-right">
+                          {sample.score ? (
+                            <div className="text-xl font-bold text-amber-600">{sample.score.totalScore.toFixed(2)}</div>
+                          ) : (
+                            <span className="text-xs text-gray-400">未评分</span>
+                          )}
+                        </div>
+                      </div>
+                      
+                      {(sample.score?.notes) && (
+                         <div className="text-sm text-amber-900 bg-amber-50 p-3 rounded-lg border border-amber-100 mt-2">
+                           <span className="font-medium text-amber-800/70 text-xs block mb-0.5">风味描述:</span>
+                           {sample.score.notes}
+                         </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+            </div>
+
+            <div className="p-6 border-t bg-gray-50 mt-auto safe-area-bottom">
+              <p className="text-xs text-center text-gray-500">此页面支持手机系统长截图功能</p>
+            </div>
+          </div>
+        </div>
+      )}
+      
       {/* Share Modal */}
       {isShareOpen && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
@@ -707,36 +646,21 @@ export default function SessionDetailPage() {
               </div>
 
               {/* Action Buttons */}
-              <div className="grid grid-cols-2 gap-3 w-full">
-                <button
-                  onClick={handleShareAsImage}
-                  disabled={isGeneratingImage}
-                  className="flex items-center justify-center gap-2 py-2.5 px-4 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 rounded-xl font-medium transition-colors shadow-sm disabled:opacity-50"
-                >
-                  {isGeneratingImage ? <RefreshCw className="w-4 h-4 animate-spin" /> : <ImageIcon className="w-4 h-4" />}
-                  {isGeneratingImage ? '生成中...' : '分享图片'}
-                </button>
+              <div className="w-full">
                 <button
                   onClick={handleCopyLink}
-                  className="flex items-center justify-center gap-2 py-2.5 px-4 bg-amber-600 hover:bg-amber-700 text-white rounded-xl font-medium transition-colors shadow-sm"
+                  className="w-full flex items-center justify-center gap-2 py-3 px-4 bg-amber-600 hover:bg-amber-700 text-white rounded-xl font-medium transition-colors shadow-sm"
                 >
                   <Copy className="w-4 h-4" />
                   复制文案
                 </button>
               </div>
-              
-              {/* Debug Logs */}
-              {debugLog.length > 0 && (
-                <div className="w-full mt-4 p-2 bg-gray-100 rounded text-xs font-mono text-gray-500 max-h-24 overflow-y-auto">
-                  {debugLog.map((log, i) => (
-                    <div key={i}>{log}</div>
-                  ))}
-                </div>
-              )}
             </div>
           </div>
         </div>
       )}
-    </div>
+      </div>
+      </div>
+    </>
   );
 }

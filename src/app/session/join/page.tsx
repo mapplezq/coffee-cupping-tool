@@ -65,6 +65,7 @@ function JoinSessionContent() {
         status: 'draft' as const,
         blindMode: sessionData.blindMode, // Restore blind mode settings
         blindLabelType: sessionData.blindLabelType,
+        isGuest: true, // Mark as guest session
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
         samples: (sessionData.samples || []).map((s: any) => ({

@@ -6,6 +6,8 @@ export interface CuppingSession {
   status: 'draft' | 'completed' | 'synced'
   blindMode?: boolean // Blind cupping mode
   blindLabelType?: 'letter' | 'number' // 'letter' (A, B, C) or 'number' (1, 2, 3)
+  type?: 'internal' | 'event' // 'internal' by default, 'event' for public events
+  isGuest?: boolean // Indicate if this session was joined via a share link
   createdAt: string
   updatedAt: string
 }

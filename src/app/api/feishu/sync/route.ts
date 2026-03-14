@@ -1,16 +1,32 @@
 import { NextResponse } from 'next/server';
 import { addRecordToBitable } from '@/lib/feishu';
 import { SessionWithSamples } from '@/lib/types';
+import { FEISHU_CONFIG } from '@/lib/feishu-config';
 
 export async function POST(request: Request) {
   try {
-    const { session, tableId: customTableId } = await request.json();
+    const body = await request.json();
+    const { session } = body;
+    const clientConfig = body.config || {};
 
-    // Use environment variables for sensitive data
-    const appId = process.env.FEISHU_APP_ID;
-    const appSecret = process.env.FEISHU_APP_SECRET;
-    const appToken = process.env.FEISHU_APP_TOKEN;
-    const tableId = customTableId || process.env.FEISHU_TABLE_ID;
+    console.log("Sync request received. Session:", session?.id, "Type:", session?.type);
+    
+    // Use environment variables OR client provided config OR hardcoded defaults
+    // Explicitly check for empty strings to ensure fallback works and trim whitespace
+    const appId = (process.env.FEISHU_APP_ID || FEISHU_CONFIG.APP_ID).replace(/[\r\n\s]+/g, '');
+    const appSecret = (process.env.FEISHU_APP_SECRET || FEISHU_CONFIG.APP_SECRET).replace(/[\r\n\s]+/g, '');
+    const appToken = (process.env.FEISHU_APP_TOKEN || FEISHU_CONFIG.APP_TOKEN).replace(/[\r\n\s]+/g, '');
+    
+    console.log("--- DEBUG INFO ---");
+    console.log(`App ID: ${appId} (Length: ${appId.length})`);
+    console.log(`App Secret: ${appSecret.substring(0, 4)}***${appSecret.substring(appSecret.length - 4)} (Length: ${appSecret.length})`);
+    console.log("--- DEBUG END ---");
+    
+    // Determine Table ID based on Session Type
+    let tableId = process.env.FEISHU_TABLE_ID || FEISHU_CONFIG.INTERNAL_TABLE_ID;
+    if (session?.type === 'event') {
+      tableId = process.env.FEISHU_EVENT_TABLE_ID || FEISHU_CONFIG.EVENT_TABLE_ID;
+    }
 
     if (!session || !appId || !appSecret || !appToken || !tableId) {
       console.error("Missing config:", { hasSession: !!session, hasAppId: !!appId, hasAppSecret: !!appSecret, hasAppToken: !!appToken, hasTableId: !!tableId });
@@ -42,7 +58,7 @@ export async function POST(request: Request) {
         "干净度": score?.cleanCup || 0,
         "甜度": score?.sweetness || 0,
         "总分": score?.totalScore || 0,
-        "风味笔记": score?.notes || "",
+        "风味笔记": (session.type === 'event' ? "【展会活动】" : "") + (score?.notes || ""),
         "缺陷记录": score?.defects ? JSON.stringify(score.defects) : "",
         "创建时间": new Date().getTime(),
       };

@@ -24,16 +24,13 @@ export default function SampleList() {
 
   const handleSync = async () => {
     const savedConfig = localStorage.getItem('feishu_config');
-    if (!savedConfig) {
-      alert('请先在首页设置中配置飞书信息');
-      return;
+    let config = {};
+    if (savedConfig) {
+      config = JSON.parse(savedConfig);
     }
-    const config = JSON.parse(savedConfig);
-    if (!config.sampleTableId) {
-      alert('请先在设置中配置样品表 ID (sampleTableId)');
-      return;
-    }
-
+    
+    // Allow syncing even without local config (backend will use defaults)
+    
     if (!confirm(`确定要将 ${globalSamples.length} 个样品同步到飞书吗？`)) return;
 
     setIsSyncing(true);

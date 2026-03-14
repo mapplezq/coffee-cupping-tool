@@ -1,16 +1,32 @@
 import { NextResponse } from 'next/server';
 import { addRecordToBitable } from '@/lib/feishu';
 import { GlobalSample } from '@/lib/types';
+import { FEISHU_CONFIG } from '@/lib/feishu-config';
 
 export async function POST(request: Request) {
   try {
     const { sampleTableId: customSampleTableId, samples } = await request.json();
 
-    // Use environment variables for sensitive data
-    const appId = process.env.FEISHU_APP_ID;
-    const appSecret = process.env.FEISHU_APP_SECRET;
-    const appToken = process.env.FEISHU_APP_TOKEN;
-    const sampleTableId = customSampleTableId || process.env.FEISHU_SAMPLE_TABLE_ID;
+    // Priority: Request Body > Env Var > Default Hardcoded
+    // Explicitly check for empty strings to ensure fallback works and trim whitespace
+    const getEnvOrConfig = (envKey: string, configValue: string) => {
+      const envValue = process.env[envKey];
+      // Check if envValue is set AND not a placeholder
+      if (envValue && !envValue.includes('your_') && !envValue.includes('YOUR_')) {
+        return envValue.replace(/[\r\n\s]+/g, '');
+      }
+      return configValue.replace(/[\r\n\s]+/g, '');
+    };
+
+    const appId = getEnvOrConfig('FEISHU_APP_ID', FEISHU_CONFIG.APP_ID);
+    const appSecret = getEnvOrConfig('FEISHU_APP_SECRET', FEISHU_CONFIG.APP_SECRET);
+    const appToken = getEnvOrConfig('FEISHU_APP_TOKEN', FEISHU_CONFIG.APP_TOKEN);
+    
+    const sampleTableId = (customSampleTableId || getEnvOrConfig('FEISHU_SAMPLE_TABLE_ID', FEISHU_CONFIG.SAMPLE_TABLE_ID));
+
+    console.log(`[Sync Samples] Using App ID: ${appId.slice(0, 5)}...`);
+    console.log(`[Sync Samples] Using Table ID: ${sampleTableId}`);
+    console.log(`[Sync Samples] Sample Count: ${samples?.length}`);
 
     if (!appId || !appSecret || !appToken) {
         return NextResponse.json({ error: 'Server configuration error: Missing Feishu credentials' }, { status: 500 });
@@ -19,15 +35,15 @@ export async function POST(request: Request) {
     if (!sampleTableId) {
       return NextResponse.json({ error: '请在设置中配置样品表 ID (sampleTableId) 或联系管理员配置环境变量' }, { status: 400 });
     }
-
+    
     if (!samples || !Array.isArray(samples) || samples.length === 0) {
       return NextResponse.json({ error: 'No samples to sync' }, { status: 400 });
     }
     
     const records = (samples as GlobalSample[]).map(sample => ({
       "样品名称": sample.name,
-      "产地": sample.origin,
-      "处理法": sample.process,
+      "产地": sample.origin || "",
+      "处理法": sample.process || "",
       "豆种": sample.variety || "",
       "瑕疵率": sample.defectRate || "",
       "水分": sample.moisture || "",
@@ -44,6 +60,7 @@ export async function POST(request: Request) {
       "创建时间": new Date(sample.createdAt).getTime(),
     }));
 
+    // Pass the hardcoded credentials to the helper function
     const result = await addRecordToBitable(appToken, sampleTableId, records, appId, appSecret);
     
     return NextResponse.json({ success: true, data: result });

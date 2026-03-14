@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -24,6 +24,7 @@ const sessionSchema = z.object({
   samples: z.array(sampleSchema).min(1, "至少需要一个样品"),
   blindMode: z.boolean().optional(),
   blindLabelType: z.enum(['letter', 'number']).optional(),
+  type: z.enum(['internal', 'event']),
 });
 
 type SessionFormValues = z.infer<typeof sessionSchema>;
@@ -37,17 +38,25 @@ export default function NewSessionPage() {
   const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest');
   const [selectedLibrarySamples, setSelectedLibrarySamples] = useState<string[]>([]);
 
-  const { register, control, handleSubmit, watch, formState: { errors } } = useForm<SessionFormValues>({
+  const { register, control, handleSubmit, watch, setValue, formState: { errors } } = useForm<SessionFormValues>({
     resolver: zodResolver(sessionSchema),
     defaultValues: {
-      cuppingDate: new Date().toISOString().split('T')[0],
+      cuppingDate: '', // Set in useEffect to avoid hydration mismatch
       samples: [],
       blindMode: false,
-      blindLabelType: 'letter',
+      blindLabelType: 'number',
+      type: 'event', // Default to Event
     },
   });
 
+  // Set default date on client side to avoid hydration mismatch
+  useEffect(() => {
+    const today = new Date().toISOString().split('T')[0];
+    setValue('cuppingDate', today);
+  }, [setValue]);
+
   const blindMode = watch('blindMode');
+  const sessionType = watch('type');
 
   const { fields, append, remove, move } = useFieldArray({
     control,
@@ -65,6 +74,7 @@ export default function NewSessionPage() {
         status: 'draft' as const,
         blindMode: data.blindMode,
         blindLabelType: data.blindLabelType,
+        type: data.type || 'internal',
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
         samples: data.samples.map(s => ({
@@ -185,24 +195,83 @@ export default function NewSessionPage() {
                         <label className="flex items-center gap-2 cursor-pointer">
                           <input
                             type="radio"
-                            value="letter"
-                            {...register("blindLabelType")}
-                            className="text-amber-600 focus:ring-amber-500"
-                          />
-                          <span className="text-sm text-gray-600">字母 (A, B, C)</span>
-                        </label>
-                        <label className="flex items-center gap-2 cursor-pointer">
-                          <input
-                            type="radio"
                             value="number"
                             {...register("blindLabelType")}
                             className="text-amber-600 focus:ring-amber-500"
                           />
                           <span className="text-sm text-gray-600">数字 (1, 2, 3)</span>
                         </label>
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="radio"
+                            value="letter"
+                            {...register("blindLabelType")}
+                            className="text-amber-600 focus:ring-amber-500"
+                          />
+                          <span className="text-sm text-gray-600">字母 (A, B, C)</span>
+                        </label>
                       </div>
                     </div>
                   )}
+                </div>
+              </div>
+
+              {/* Event Mode Switch */}
+              <div className="flex items-start gap-4 mt-6">
+                <div className="flex items-center h-6">
+                  <input
+                    id="eventMode"
+                    type="checkbox"
+                    checked={sessionType === 'event'}
+                    onChange={(e) => {
+                      const isChecked = e.target.checked;
+                      // Manually set value since we're mapping checkbox to enum
+                      // or just use register/watch but simpler here
+                      const event = { target: { name: 'type', value: isChecked ? 'event' : 'internal' } };
+                      // Actually react-hook-form handles this better with register if boolean, 
+                      // but here 'type' is enum. Let's use Controller or just manual setValue if needed.
+                      // Simpler: use setValue from useForm
+                    }}
+                    // Let's use register properly but need to handle value mapping
+                    // Or simpler: Just render two radio buttons for Mode
+                    className="hidden" 
+                  />
+                  {/* Re-implementing as Radio Group for clarity */}
+                </div>
+              </div>
+              
+              <div className="pt-4 border-t border-gray-100">
+                <label className="text-sm font-medium text-gray-700 block mb-3">活动类型</label>
+                <div className="grid grid-cols-2 gap-4">
+                  <label className={`flex flex-col p-4 rounded-lg border cursor-pointer transition-all ${
+                    sessionType === 'event' ? 'bg-amber-50 border-amber-500 ring-1 ring-amber-500' : 'bg-white border-gray-200 hover:border-gray-300'
+                  }`}>
+                    <div className="flex items-center gap-2 mb-1">
+                      <input 
+                        type="radio" 
+                        value="event" 
+                        {...register("type")} 
+                        className="text-amber-600 focus:ring-amber-500"
+                      />
+                      <span className="font-semibold text-gray-900">公开活动/展会</span>
+                    </div>
+                    <p className="text-xs text-gray-500 ml-6">展会、分享会，强制昵称，数据独立标记。</p>
+                  </label>
+
+                  <label className={`flex flex-col p-4 rounded-lg border cursor-pointer transition-all ${
+                    sessionType === 'internal' ? 'bg-amber-50 border-amber-500 ring-1 ring-amber-500' : 'bg-white border-gray-200 hover:border-gray-300'
+                  }`}>
+                    <div className="flex items-center gap-2 mb-1">
+                      <input 
+                        type="radio" 
+                        value="internal" 
+                        {...register("type")} 
+                        className="text-amber-600 focus:ring-amber-500"
+                      />
+                      <span className="font-semibold text-gray-900">内部杯测</span>
+                    </div>
+                    <p className="text-xs text-gray-500 ml-6">日常品控、生豆测试，数据归档至主表。</p>
+                  </label>
                 </div>
               </div>
             </div>

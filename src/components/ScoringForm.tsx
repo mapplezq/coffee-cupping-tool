@@ -107,7 +107,7 @@ export default function ScoringForm({ sample, onSave, isSaving, onDirtyChange }:
       defects,
       notes: data.notes || '',
     });
-  }, 1500);
+  }, 500);
 
   // Watch for changes and trigger auto-save
   useEffect(() => {

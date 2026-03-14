@@ -2,12 +2,15 @@ const ENV_APP_ID = process.env.FEISHU_APP_ID;
 const ENV_APP_SECRET = process.env.FEISHU_APP_SECRET;
 
 export async function getTenantAccessToken(appId?: string, appSecret?: string) {
-  const finalAppId = appId || ENV_APP_ID;
-  const finalAppSecret = appSecret || ENV_APP_SECRET;
+  const finalAppId = (appId || ENV_APP_ID || "").replace(/[\r\n\s]+/g, '');
+  const finalAppSecret = (appSecret || ENV_APP_SECRET || "").replace(/[\r\n\s]+/g, '');
 
   if (!finalAppId || !finalAppSecret) {
     throw new Error("Missing FEISHU_APP_ID or FEISHU_APP_SECRET");
   }
+
+  // Debug log (masked)
+  console.log(`Getting Tenant Access Token. AppID: ${finalAppId.slice(0, 4)}... Length: ${finalAppId.length}`);
 
   const response = await fetch("https://open.feishu.cn/open-apis/auth/v3/tenant_access_token/internal", {
     method: "POST",

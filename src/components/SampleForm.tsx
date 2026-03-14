@@ -4,8 +4,9 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSessions } from '@/lib/context';
 import { GlobalSample } from '@/lib/types';
-import { ArrowLeft, Save } from 'lucide-react';
+import { ArrowLeft, Save, ChevronDown, ChevronUp } from 'lucide-react';
 import Link from 'next/link';
+import { v4 as uuidv4 } from 'uuid';
 
 interface SampleFormProps {
   initialData?: GlobalSample;
@@ -16,6 +17,7 @@ export default function SampleForm({ initialData, isEdit = false }: SampleFormPr
   const router = useRouter();
   const { addGlobalSample, updateGlobalSample } = useSessions();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isDetailsOpen, setIsDetailsOpen] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -23,33 +25,36 @@ export default function SampleForm({ initialData, isEdit = false }: SampleFormPr
 
     try {
       const formData = new FormData(e.currentTarget);
+      
       const sampleData: GlobalSample = {
-        id: initialData?.id || crypto.randomUUID(),
+        id: initialData?.id || uuidv4(),
         name: formData.get('name') as string,
-        origin: formData.get('origin') as string,
-        process: formData.get('process') as string,
-        type: formData.get('type') as any,
-        variety: formData.get('variety') as string,
-        defectRate: formData.get('defectRate') as string,
-        moisture: formData.get('moisture') as string,
-        waterActivity: formData.get('waterActivity') as string,
-        screenSize: formData.get('screenSize') as string,
-        cropYear: formData.get('cropYear') as string,
-        supplier: formData.get('supplier') as string,
+        origin: formData.get('origin') as string || '',
+        process: formData.get('process') as string || '',
+        variety: formData.get('variety') as string || '',
+        type: (formData.get('type') as any) || 'pre_shipment',
+        defectRate: formData.get('defectRate') as string || '',
+        moisture: formData.get('moisture') as string || '',
+        waterActivity: formData.get('waterActivity') as string || '',
+        screenSize: formData.get('screenSize') as string || '',
+        cropYear: formData.get('cropYear') as string || '',
+        supplier: formData.get('supplier') as string || '',
         createdAt: initialData?.createdAt || new Date().toISOString(),
         updatedAt: new Date().toISOString(),
+        status: initialData?.status || 'active',
       };
 
-      if (isEdit) {
+      if (isEdit && initialData) {
         await updateGlobalSample(sampleData);
       } else {
         await addGlobalSample(sampleData);
       }
-      
+
       router.push('/samples');
+      router.refresh(); 
     } catch (error) {
-      console.error("Failed to save sample:", error);
-      alert("保存失败，请重试");
+      console.error('Error saving sample:', error);
+      alert('保存失败，请重试');
     } finally {
       setIsSubmitting(false);
     }
@@ -138,23 +143,6 @@ export default function SampleForm({ initialData, isEdit = false }: SampleFormPr
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                样品类型 (Type)
-              </label>
-              <select
-                name="type"
-                defaultValue={initialData?.type || 'pre_shipment'}
-                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 bg-white"
-              >
-                <option value="pre_shipment">货前样</option>
-                <option value="processing">加工样</option>
-                <option value="arrival">到货样</option>
-                <option value="sales">可销售样</option>
-                <option value="self_drawn">自抽样</option>
-                <option value="other">其他</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
                 豆种 (Variety)
               </label>
               <input
@@ -179,87 +167,113 @@ export default function SampleForm({ initialData, isEdit = false }: SampleFormPr
                 <option value="卡杜艾" />
               </datalist>
             </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                样品类型 (Type)
+              </label>
+              <select
+                name="type"
+                defaultValue={initialData?.type || 'pre_shipment'}
+                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 bg-white"
+              >
+                <option value="pre_shipment">货前样</option>
+                <option value="processing">加工样</option>
+                <option value="arrival">到货样</option>
+                <option value="sales">可销售样</option>
+                <option value="self_drawn">自抽样</option>
+                <option value="other">其他</option>
+              </select>
+            </div>
           </div>
         </div>
 
         {/* Technical Details Section */}
         <div className="space-y-6">
-          <h2 className="text-lg font-semibold text-gray-900 border-b pb-2">详细参数 (可选)</h2>
+          <button 
+            type="button"
+            onClick={() => setIsDetailsOpen(!isDetailsOpen)}
+            className="flex items-center justify-between w-full text-left text-lg font-semibold text-gray-900 border-b pb-2 hover:text-amber-700 transition-colors"
+          >
+            <span>详细参数 (可选)</span>
+            {isDetailsOpen ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
+          </button>
           
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                瑕疵率 (Defect Rate)
-              </label>
-              <input
-                name="defectRate"
-                defaultValue={initialData?.defectRate}
-                type="text"
-                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
-                placeholder="例如：2%"
-              />
+          {isDetailsOpen && (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 animate-in slide-in-from-top-2">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  瑕疵率 (Defect Rate)
+                </label>
+                <input
+                  name="defectRate"
+                  defaultValue={initialData?.defectRate}
+                  type="text"
+                  className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
+                  placeholder="例如：2%"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  水分 (Moisture)
+                </label>
+                <input
+                  name="moisture"
+                  defaultValue={initialData?.moisture}
+                  type="text"
+                  className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
+                  placeholder="例如：10.5%"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  水活性 (Water Activity)
+                </label>
+                <input
+                  name="waterActivity"
+                  defaultValue={initialData?.waterActivity}
+                  type="text"
+                  className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
+                  placeholder="例如：0.65aw"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  目数 (Screen Size)
+                </label>
+                <input
+                  name="screenSize"
+                  defaultValue={initialData?.screenSize}
+                  type="text"
+                  className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
+                  placeholder="例如：15-17"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  产季 (Crop Year)
+                </label>
+                <input
+                  name="cropYear"
+                  defaultValue={initialData?.cropYear}
+                  type="text"
+                  className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
+                  placeholder="例如：2023/2024"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  提供商 (Supplier)
+                </label>
+                <input
+                  name="supplier"
+                  defaultValue={initialData?.supplier}
+                  type="text"
+                  className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
+                  placeholder="例如：某某庄园"
+                />
+              </div>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                水分 (Moisture)
-              </label>
-              <input
-                name="moisture"
-                defaultValue={initialData?.moisture}
-                type="text"
-                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
-                placeholder="例如：10.5%"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                水活性 (Water Activity)
-              </label>
-              <input
-                name="waterActivity"
-                defaultValue={initialData?.waterActivity}
-                type="text"
-                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
-                placeholder="例如：0.65aw"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                目数 (Screen Size)
-              </label>
-              <input
-                name="screenSize"
-                defaultValue={initialData?.screenSize}
-                type="text"
-                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
-                placeholder="例如：15-17"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                产季 (Crop Year)
-              </label>
-              <input
-                name="cropYear"
-                defaultValue={initialData?.cropYear}
-                type="text"
-                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
-                placeholder="例如：2023/2024"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                提供商 (Supplier)
-              </label>
-              <input
-                name="supplier"
-                defaultValue={initialData?.supplier}
-                type="text"
-                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
-                placeholder="例如：某某庄园"
-              />
-            </div>
-          </div>
+          )}
         </div>
 
         <div className="flex justify-end pt-4 border-t border-gray-100">
