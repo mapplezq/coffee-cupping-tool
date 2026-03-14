@@ -153,7 +153,7 @@ export default function SessionDetailPage() {
     localStorage.setItem('feishu_config', JSON.stringify(newConfig));
     
     setIsNameModalOpen(false);
-    alert('昵称设置成功！请再次点击“保存”按钮提交评分。');
+    alert('昵称设置成功！');
   };
 
   const executeSync = async () => {
