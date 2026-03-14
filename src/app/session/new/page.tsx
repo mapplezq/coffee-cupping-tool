@@ -45,7 +45,7 @@ export default function NewSessionPage() {
       samples: [],
       blindMode: false,
       blindLabelType: 'number',
-      type: 'event', // Default to Event
+      type: 'event', // Default to Event as requested by user often using public events
     },
   });
 
@@ -67,6 +67,7 @@ export default function NewSessionPage() {
     setIsSubmitting(true);
     try {
       const sessionId = uuidv4();
+      console.log('Creating session with type:', data.type); // Debug log
       const newSession = {
         id: sessionId,
         name: data.name,
@@ -74,7 +75,7 @@ export default function NewSessionPage() {
         status: 'draft' as const,
         blindMode: data.blindMode,
         blindLabelType: data.blindLabelType,
-        type: data.type || 'internal',
+        type: data.type, // Ensure type is passed correctly
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
         samples: data.samples.map(s => ({

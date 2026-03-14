@@ -29,14 +29,24 @@ export async function POST(request: Request) {
     console.log("--- DEBUG END ---");
     
     // Determine Table ID based on Session Type
+    // Default to Internal Table
     let tableId = process.env.FEISHU_TABLE_ID || FEISHU_CONFIG.INTERNAL_TABLE_ID;
+    
+    // Explicitly handle 'event' type
     if (session?.type === 'event') {
-      // If user provided FEISHU_EVENT_TABLE_ID in env, use it
-      // Otherwise fallback to FEISHU_CONFIG.EVENT_TABLE_ID
-      // But wait, if user ONLY provided FEISHU_TABLE_ID (Internal), maybe they want to use that for EVERYTHING?
-      // Currently, if event ID is missing, we use default Event ID.
-      // If the user hasn't set up the Event Table, this will fail (which is correct behavior).
-      tableId = process.env.FEISHU_EVENT_TABLE_ID || FEISHU_CONFIG.EVENT_TABLE_ID;
+      // Prioritize environment variable if set, otherwise use config default
+      const envEventTableId = process.env.FEISHU_EVENT_TABLE_ID;
+      
+      // Check if env variable is valid (not empty, not placeholder)
+      if (envEventTableId && !envEventTableId.includes('your_')) {
+          tableId = envEventTableId;
+      } else {
+          tableId = FEISHU_CONFIG.EVENT_TABLE_ID;
+      }
+      
+      console.log(`[Sync Debug] Event Type Detected. Switching to Event Table ID: ${tableId}`);
+    } else {
+      console.log(`[Sync Debug] Internal/Default Type Detected. Using Internal Table ID: ${tableId}`);
     }
     
     console.log(`[Sync Debug] Session Type: ${session?.type}, Selected Table ID: ${tableId}`);
