@@ -320,9 +320,17 @@ export default function SessionDetailPage() {
               <div>
                 <h1 className="text-2xl font-bold text-gray-900">{session.name}</h1>
                 <div className="flex items-center gap-2 text-sm text-gray-500">
-                  <span>杯测日期: {formatDate(session.cuppingDate)}</span>
-                  <span className={`px-2 py-0.5 rounded-full text-xs ${
-                    session.status === 'synced' ? 'bg-blue-100 text-blue-700' : 'bg-yellow-100 text-yellow-700'
+                  <span>{formatDate(session.cuppingDate)}</span>
+                  <span className="mx-1">·</span>
+                  <span className={`px-2 py-0.5 rounded text-xs border ${
+                    session.type === 'event' 
+                      ? 'bg-purple-50 text-purple-700 border-purple-200' 
+                      : 'bg-gray-50 text-gray-600 border-gray-200'
+                  }`}>
+                    {session.type === 'event' ? '公开活动' : '内部杯测'}
+                  </span>
+                  <span className={`px-2 py-0.5 rounded text-xs border ${
+                    session.status === 'synced' ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-yellow-50 text-yellow-700 border-yellow-200'
                   }`}>
                     {session.status === 'completed' ? '已完成' :
                      session.status === 'synced' ? '已同步' : '草稿'}

@@ -10,6 +10,12 @@ export async function POST(request: Request) {
     const clientConfig = body.config || {};
 
     console.log("Sync request received. Session:", session?.id, "Type:", session?.type);
+    console.log("Environment check:", {
+      hasInternalTableId: !!process.env.FEISHU_TABLE_ID,
+      hasEventTableId: !!process.env.FEISHU_EVENT_TABLE_ID,
+      envInternalTableId: process.env.FEISHU_TABLE_ID ? process.env.FEISHU_TABLE_ID.slice(0, 5) + '...' : 'null',
+      envEventTableId: process.env.FEISHU_EVENT_TABLE_ID ? process.env.FEISHU_EVENT_TABLE_ID.slice(0, 5) + '...' : 'null',
+    });
     
     // Use environment variables OR client provided config OR hardcoded defaults
     // Explicitly check for empty strings to ensure fallback works and trim whitespace
@@ -25,8 +31,15 @@ export async function POST(request: Request) {
     // Determine Table ID based on Session Type
     let tableId = process.env.FEISHU_TABLE_ID || FEISHU_CONFIG.INTERNAL_TABLE_ID;
     if (session?.type === 'event') {
+      // If user provided FEISHU_EVENT_TABLE_ID in env, use it
+      // Otherwise fallback to FEISHU_CONFIG.EVENT_TABLE_ID
+      // But wait, if user ONLY provided FEISHU_TABLE_ID (Internal), maybe they want to use that for EVERYTHING?
+      // Currently, if event ID is missing, we use default Event ID.
+      // If the user hasn't set up the Event Table, this will fail (which is correct behavior).
       tableId = process.env.FEISHU_EVENT_TABLE_ID || FEISHU_CONFIG.EVENT_TABLE_ID;
     }
+    
+    console.log(`[Sync Debug] Session Type: ${session?.type}, Selected Table ID: ${tableId}`);
 
     if (!session || !appId || !appSecret || !appToken || !tableId) {
       console.error("Missing config:", { hasSession: !!session, hasAppId: !!appId, hasAppSecret: !!appSecret, hasAppToken: !!appToken, hasTableId: !!tableId });
