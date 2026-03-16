@@ -8,6 +8,8 @@ export interface CuppingSession {
   blindLabelType?: 'letter' | 'number' // 'letter' (A, B, C) or 'number' (1, 2, 3)
   type?: 'internal' | 'event' // 'internal' by default, 'event' for public events
   isGuest?: boolean // Indicate if this session was joined via a share link
+  votingMode?: boolean // Enable quick voting mode
+  maxVotes?: number // Max votes allowed per user (e.g. 3)
   createdAt: string
   updatedAt: string
 }
@@ -63,6 +65,7 @@ export interface CuppingScore {
   totalScore: number
   defects: Defect[]
   notes: string
+  isFavorite?: boolean // For voting mode
   createdAt: string
 }
 

@@ -25,6 +25,8 @@ const sessionSchema = z.object({
   blindMode: z.boolean().optional(),
   blindLabelType: z.enum(['letter', 'number']).optional(),
   type: z.enum(['internal', 'event']),
+  votingMode: z.boolean().optional(),
+  maxVotes: z.number().min(1).max(10).optional(),
 });
 
 type SessionFormValues = z.infer<typeof sessionSchema>;
@@ -46,6 +48,8 @@ export default function NewSessionPage() {
       blindMode: false,
       blindLabelType: 'number',
       type: 'event', // Default to Event as requested by user often using public events
+      votingMode: false,
+      maxVotes: 3,
     },
   });
 
@@ -57,6 +61,7 @@ export default function NewSessionPage() {
 
   const blindMode = watch('blindMode');
   const sessionType = watch('type');
+  const votingMode = watch('votingMode');
 
   const { fields, append, remove, move } = useFieldArray({
     control,
@@ -76,6 +81,8 @@ export default function NewSessionPage() {
         blindMode: data.blindMode,
         blindLabelType: data.blindLabelType,
         type: data.type, // Ensure type is passed correctly
+        votingMode: data.votingMode,
+        maxVotes: data.maxVotes || 3,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
         samples: data.samples.map(s => ({
@@ -212,6 +219,62 @@ export default function NewSessionPage() {
                           <span className="text-sm text-gray-600">字母 (A, B, C)</span>
                         </label>
                       </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Voting Mode Switch */}
+              <div className="flex items-start gap-4 mt-6">
+                <div className="flex items-center h-6">
+                  <input
+                    id="votingMode"
+                    type="checkbox"
+                    {...register("votingMode")}
+                    className="w-4 h-4 text-amber-600 border-gray-300 rounded focus:ring-amber-500"
+                  />
+                </div>
+                <div className="flex-1">
+                  <label htmlFor="votingMode" className="text-sm font-medium text-gray-900 block">
+                    启用大众评审模式 (Quick Vote)
+                  </label>
+                  <p className="text-xs text-gray-500">
+                    简化打分流程，仅允许参与者选择喜爱的样品，适合人流量大的公开活动。
+                  </p>
+                  
+                  {votingMode && (
+                    <div className="mt-3 flex items-center gap-4 animate-in fade-in slide-in-from-top-2">
+                      <label className="text-sm text-gray-700">每人最多可选:</label>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const current = watch('maxVotes') || 3;
+                            if (current > 1) setValue('maxVotes', current - 1);
+                          }}
+                          className="w-8 h-8 flex items-center justify-center border rounded hover:bg-gray-50"
+                        >
+                          -
+                        </button>
+                        <input
+                          type="number"
+                          {...register("maxVotes", { valueAsNumber: true })}
+                          className="w-12 text-center p-1 border rounded"
+                          min={1}
+                          max={10}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const current = watch('maxVotes') || 3;
+                            if (current < 10) setValue('maxVotes', current + 1);
+                          }}
+                          className="w-8 h-8 flex items-center justify-center border rounded hover:bg-gray-50"
+                        >
+                          +
+                        </button>
+                      </div>
+                      <span className="text-sm text-gray-500">个样品</span>
                     </div>
                   )}
                 </div>
