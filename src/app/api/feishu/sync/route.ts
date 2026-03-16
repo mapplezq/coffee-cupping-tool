@@ -19,9 +19,18 @@ export async function POST(request: Request) {
     
     // Use environment variables OR client provided config OR hardcoded defaults
     // Explicitly check for empty strings to ensure fallback works and trim whitespace
-    const appId = (process.env.FEISHU_APP_ID || FEISHU_CONFIG.APP_ID).replace(/[\r\n\s]+/g, '');
-    const appSecret = (process.env.FEISHU_APP_SECRET || FEISHU_CONFIG.APP_SECRET).replace(/[\r\n\s]+/g, '');
-    const appToken = (process.env.FEISHU_APP_TOKEN || FEISHU_CONFIG.APP_TOKEN).replace(/[\r\n\s]+/g, '');
+    const getEnvOrConfig = (envKey: string, configValue: string) => {
+      const envValue = process.env[envKey];
+      // Check if envValue is set AND not a placeholder
+      if (envValue && !envValue.includes('your_') && !envValue.includes('YOUR_')) {
+        return envValue.replace(/[\r\n\s]+/g, '');
+      }
+      return configValue.replace(/[\r\n\s]+/g, '');
+    };
+
+    const appId = getEnvOrConfig('FEISHU_APP_ID', FEISHU_CONFIG.APP_ID);
+    const appSecret = getEnvOrConfig('FEISHU_APP_SECRET', FEISHU_CONFIG.APP_SECRET);
+    const appToken = getEnvOrConfig('FEISHU_APP_TOKEN', FEISHU_CONFIG.APP_TOKEN);
     
     console.log("--- DEBUG INFO ---");
     console.log(`App ID: ${appId} (Length: ${appId.length})`);
@@ -30,31 +39,20 @@ export async function POST(request: Request) {
     
     // Determine Table ID based on Session Type
     // Default to Internal Table
-    let tableId = process.env.FEISHU_TABLE_ID || FEISHU_CONFIG.INTERNAL_TABLE_ID;
+    let tableId = getEnvOrConfig('FEISHU_TABLE_ID', FEISHU_CONFIG.INTERNAL_TABLE_ID);
     
     // Explicitly handle 'event' type
     if (session?.type === 'event') {
       // Prioritize environment variable if set, otherwise use config default
-      const envEventTableId = process.env.FEISHU_EVENT_TABLE_ID;
-      
-      // Check if env variable is valid (not empty, not placeholder)
-      if (envEventTableId && !envEventTableId.includes('your_')) {
-          tableId = envEventTableId;
-      } else {
-          tableId = FEISHU_CONFIG.EVENT_TABLE_ID;
-      }
-      
+      const envEventTableId = getEnvOrConfig('FEISHU_EVENT_TABLE_ID', FEISHU_CONFIG.EVENT_TABLE_ID);
+      tableId = envEventTableId;
       console.log(`[Sync Debug] Event Type Detected. Switching to Event Table ID: ${tableId}`);
     } 
 
     // Handle 'voting' template - Overrides everything else if set
     if (session?.template === 'voting') {
-      const envVotingTableId = process.env.FEISHU_VOTING_TABLE_ID;
-      if (envVotingTableId && !envVotingTableId.includes('your_')) {
-          tableId = envVotingTableId;
-      } else {
-          tableId = FEISHU_CONFIG.VOTING_TABLE_ID;
-      }
+      const envVotingTableId = getEnvOrConfig('FEISHU_VOTING_TABLE_ID', FEISHU_CONFIG.VOTING_TABLE_ID);
+      tableId = envVotingTableId;
       console.log(`[Sync Debug] Voting Template Detected. Switching to Voting Table ID: ${tableId}`);
     }
 
@@ -80,9 +78,6 @@ export async function POST(request: Request) {
                 "是否喜欢": score?.isFavorite ? "是" : "", // Using text "是" for checkbox or select
                 "评语": score?.notes || "",
                 "投票时间": new Date().getTime(), // Or score?.createdAt if available
-                // Add minimal other info just in case
-                "产地": sample.origin,
-                "处理法": sample.process,
             };
         });
     } else {
