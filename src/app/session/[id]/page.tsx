@@ -6,7 +6,7 @@ import { useSessions } from '@/lib/context';
 import { SessionWithSamples, CuppingScore } from '@/lib/types';
 import ScoringForm from '@/components/ScoringForm';
 import SettingsModal from '@/components/SettingsModal';
-import { ArrowLeft, RefreshCw, CheckCircle, Settings, Share2, X, Eye, EyeOff, ChevronLeft, ChevronRight, Copy, BarChart3, ListChecks } from 'lucide-react';
+import { ArrowLeft, RefreshCw, CheckCircle, Settings, Share2, X, Eye, EyeOff, ChevronLeft, ChevronRight, Copy, BarChart3, ListChecks, Heart, MessageSquare } from 'lucide-react';
 import Link from 'next/link';
 import { cn, formatDate } from '@/lib/utils';
 import { v4 as uuidv4 } from 'uuid';
@@ -29,6 +29,123 @@ export default function SessionDetailPage() {
   const [isNameModalOpen, setIsNameModalOpen] = useState(false);
   const [isResultModalOpen, setIsResultModalOpen] = useState(false);
   const [cupperNameInput, setCupperNameInput] = useState('');
+
+  const [expandedNotes, setExpandedNotes] = useState<string[]>([]);
+
+  const toggleNote = (sampleId: string) => {
+    setExpandedNotes(prev => 
+      prev.includes(sampleId) ? prev.filter(id => id !== sampleId) : [...prev, sampleId]
+    );
+  };
+
+  const handleVote = async (sample: SessionWithSamples['samples'][0]) => {
+    // Check if cupper name is configured
+    const savedConfig = localStorage.getItem('feishu_config');
+    const config = savedConfig ? JSON.parse(savedConfig) : {};
+    
+    if (!config.cupperName) {
+      setIsNameModalOpen(true);
+      return;
+    }
+
+    const isCurrentlyFavorite = !!sample.score?.isFavorite;
+    const newFavoriteStatus = !isCurrentlyFavorite;
+
+    try {
+      // Optimistic update
+      const updatedSample = {
+        ...sample,
+        score: {
+          ...sample.score,
+          id: sample.score?.id || uuidv4(),
+          sampleId: sample.id,
+          createdAt: sample.score?.createdAt || new Date().toISOString(),
+          cupperName: config.cupperName,
+          isFavorite: newFavoriteStatus,
+          notes: sample.score?.notes || '',
+          // Correct field names based on types.ts
+          fragrance: sample.score?.fragrance || 0,
+          flavor: sample.score?.flavor || 0,
+          aftertaste: sample.score?.aftertaste || 0,
+          acidity: sample.score?.acidity || 0,
+          body: sample.score?.body || 0,
+          uniformity: sample.score?.uniformity || 0,
+          balance: sample.score?.balance || 0,
+          cleanCup: sample.score?.cleanCup || 0,
+          sweetness: sample.score?.sweetness || 0,
+          overall: sample.score?.overall || 0,
+          defects: sample.score?.defects || [],
+          totalScore: sample.score?.totalScore || 0,
+        } as CuppingScore
+      };
+
+      if (!session) return; // Guard clause
+
+      const updatedSession: SessionWithSamples = {
+        ...session,
+        updatedAt: new Date().toISOString(),
+        samples: session.samples.map(s => s.id === sample.id ? updatedSample : s)
+      };
+
+      await updateSession(updatedSession);
+      setSession(updatedSession);
+    } catch (error) {
+      console.error("Failed to toggle vote:", error);
+      alert("操作失败，请重试");
+    }
+  };
+
+  const handleVoteNoteChange = async (sample: SessionWithSamples['samples'][0], note: string) => {
+    // Similar to handleVote but updates notes
+     const savedConfig = localStorage.getItem('feishu_config');
+     const config = savedConfig ? JSON.parse(savedConfig) : {};
+    
+    if (!config.cupperName) {
+      // Should already be handled but just in case
+      return;
+    }
+
+    try {
+      const updatedSample = {
+        ...sample,
+        score: {
+          ...sample.score,
+          id: sample.score?.id || uuidv4(),
+          sampleId: sample.id,
+          createdAt: sample.score?.createdAt || new Date().toISOString(),
+          cupperName: config.cupperName,
+          isFavorite: sample.score?.isFavorite, // keep existing
+          notes: note,
+          // Correct field names
+          fragrance: sample.score?.fragrance || 0,
+          flavor: sample.score?.flavor || 0,
+          aftertaste: sample.score?.aftertaste || 0,
+          acidity: sample.score?.acidity || 0,
+          body: sample.score?.body || 0,
+          uniformity: sample.score?.uniformity || 0,
+          balance: sample.score?.balance || 0,
+          cleanCup: sample.score?.cleanCup || 0,
+          sweetness: sample.score?.sweetness || 0,
+          overall: sample.score?.overall || 0,
+          defects: sample.score?.defects || [],
+          totalScore: sample.score?.totalScore || 0,
+        } as CuppingScore
+      };
+
+      if (!session) return; // Guard clause
+
+      const updatedSession: SessionWithSamples = {
+        ...session,
+        updatedAt: new Date().toISOString(),
+        samples: session.samples.map(s => s.id === sample.id ? updatedSample : s)
+      };
+
+      await updateSession(updatedSession);
+      setSession(updatedSession);
+    } catch (error) {
+      console.error("Failed to update note:", error);
+    }
+  };
 
   const sessionId = params.id as string;
 
@@ -231,17 +348,124 @@ export default function SessionDetailPage() {
     }
 
     // Validation: Check for missing scores
-    const missingScores = session?.samples.filter(s => !s.score);
-    if (missingScores && missingScores.length > 0) {
-      const message = `以下样品尚未评分：\n${missingScores.map(s => s.name).join('\n')}\n\n确定要继续同步吗？未评分的样品将不会包含评分数据。`;
-      if (!window.confirm(message)) {
-        return; // Stop execution if user cancels
+    if (session.template !== 'voting') {
+      const missingScores = session?.samples.filter(s => !s.score);
+      if (missingScores && missingScores.length > 0) {
+        const message = `以下样品尚未评分：\n${missingScores.map(s => s.name).join('\n')}\n\n确定要继续同步吗？未评分的样品将不会包含评分数据。`;
+        if (!window.confirm(message)) {
+          return; // Stop execution if user cancels
+        }
       }
+    } else {
+        // Voting mode validation: warn if no favorites selected?
+        // Actually, maybe they just want to submit notes. It's fine.
+        // Or warn if nothing at all is touched?
+        // Let's just confirm submission.
+        if (!window.confirm('确定要提交您的投票结果吗？提交后无法修改。')) {
+            return;
+        }
     }
 
     // Proceed to sync
     await executeSync();
   };
+
+  if (session.template === 'voting') {
+    return (
+      <div className="min-h-screen bg-neutral-50 p-4 md:p-8 pb-24">
+        {/* Simple Header */}
+        <div className="max-w-xl mx-auto mb-6 flex items-center justify-between">
+           <div>
+             <h1 className="text-2xl font-bold text-gray-900">{session.name}</h1>
+             <p className="text-sm text-gray-500">大众投票模式 · 请选择您喜爱的样品</p>
+           </div>
+           <button onClick={handleSync} disabled={isSyncing} className="px-4 py-2 bg-amber-600 text-white rounded-lg text-sm font-medium">
+             {isSyncing ? '提交中...' : '提交投票'}
+           </button>
+        </div>
+
+        {/* Name Input Modal (Reused) */}
+        {isNameModalOpen && (
+          <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+            <div className="bg-white rounded-xl shadow-xl w-full max-w-sm p-6">
+              <h3 className="text-lg font-bold text-gray-900 mb-2">👋 欢迎参与投票</h3>
+              <p className="text-sm text-gray-500 mb-4">请留下您的昵称</p>
+              <input
+                type="text"
+                value={cupperNameInput}
+                onChange={(e) => setCupperNameInput(e.target.value)}
+                placeholder="请输入您的姓名或昵称"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg mb-4 focus:ring-2 focus:ring-amber-500 outline-none"
+                autoFocus
+              />
+              <div className="flex justify-end gap-2">
+                <button onClick={() => setIsNameModalOpen(false)} className="px-4 py-2 text-gray-500 hover:bg-gray-100 rounded-lg">取消</button>
+                <button onClick={handleSaveName} disabled={!cupperNameInput.trim()} className="px-4 py-2 bg-amber-600 text-white rounded-lg disabled:opacity-50">开始投票</button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        <div className="max-w-xl mx-auto space-y-4">
+          {session.samples.map((sample, index) => {
+            const isFavorite = !!sample.score?.isFavorite;
+            const note = sample.score?.notes || '';
+            const isNoteExpanded = expandedNotes.includes(sample.id);
+
+            return (
+              <div key={sample.id} className={`bg-white rounded-xl border transition-all ${isFavorite ? 'border-amber-500 shadow-md ring-1 ring-amber-500' : 'border-gray-200 shadow-sm'}`}>
+                <div className="p-4 flex items-start gap-4">
+                  {/* Label */}
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg shrink-0 mt-1 ${isFavorite ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-500'}`}>
+                    {index + 1}
+                  </div>
+                  
+                  {/* Info */}
+                  <div className="flex-1 min-w-0" onClick={() => handleVote(sample)}>
+                    <div className="font-bold text-gray-900 line-clamp-2">{sample.name}</div>
+                    <div className="text-xs text-gray-500 mt-1">{sample.origin} · {sample.process}</div>
+                  </div>
+
+                  {/* Actions */}
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button 
+                      onClick={(e) => { e.stopPropagation(); handleVote(sample); }}
+                      className={`p-2 rounded-full transition-all active:scale-90 ${isFavorite ? 'text-red-500 bg-red-50' : 'text-gray-300 hover:bg-gray-100'}`}
+                    >
+                      <Heart className={`w-8 h-8 ${isFavorite ? 'fill-current' : ''}`} />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Note Input - Always visible in voting mode */}
+                <div className="px-4 pb-4">
+                    <textarea
+                      value={note}
+                      onChange={(e) => handleVoteNoteChange(sample, e.target.value)}
+                      placeholder="写点评价... (选填)"
+                      className="w-full p-3 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 focus:bg-white transition-all resize-none"
+                      rows={2}
+                    />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+        
+        {/* Floating Submit Button for Mobile */}
+        <div className="fixed bottom-6 left-0 right-0 px-4 md:hidden">
+          <button 
+            onClick={handleSync} 
+            disabled={isSyncing}
+            className="w-full max-w-xl mx-auto bg-amber-600 text-white py-3 rounded-xl shadow-lg font-bold text-lg active:scale-95 transition-all flex items-center justify-center gap-2 disabled:opacity-70"
+          >
+            {isSyncing ? <RefreshCw className="w-5 h-5 animate-spin" /> : <CheckCircle className="w-5 h-5" />}
+            {isSyncing ? '正在提交...' : '提交我的投票'}
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <>

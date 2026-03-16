@@ -12,4 +12,5 @@ export const FEISHU_CONFIG = {
   INTERNAL_TABLE_ID: 'tblMG2e1rOdQnFNJ', // Internal Cupping Results (内部杯测结果)
   EVENT_TABLE_ID: 'tbldVl0yZUmlGiET',    // Event Cupping Results (展会/活动杯测)
   SAMPLE_TABLE_ID: 'tblFJKzxagGpVUoP',   // Sample Inventory (样品库)
+  VOTING_TABLE_ID: 'tbl4FziWMhuB4c32',   // Public Voting Results (大众评审结果)
 };

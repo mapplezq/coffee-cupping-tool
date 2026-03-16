@@ -25,6 +25,7 @@ const sessionSchema = z.object({
   blindMode: z.boolean().optional(),
   blindLabelType: z.enum(['letter', 'number']).optional(),
   type: z.enum(['internal', 'event']),
+  template: z.enum(['standard', 'voting']),
 });
 
 type SessionFormValues = z.infer<typeof sessionSchema>;
@@ -46,6 +47,7 @@ export default function NewSessionPage() {
       blindMode: false,
       blindLabelType: 'number',
       type: 'event', // Default to Event as requested by user often using public events
+      template: 'standard', // Default to Standard scoring
     },
   });
 
@@ -57,6 +59,7 @@ export default function NewSessionPage() {
 
   const blindMode = watch('blindMode');
   const sessionType = watch('type');
+  const template = watch('template');
 
   const { fields, append, remove, move } = useFieldArray({
     control,
@@ -76,6 +79,7 @@ export default function NewSessionPage() {
         blindMode: data.blindMode,
         blindLabelType: data.blindLabelType,
         type: data.type, // Ensure type is passed correctly
+        template: data.template, // Set template
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
         samples: data.samples.map(s => ({
@@ -169,9 +173,45 @@ export default function NewSessionPage() {
                 />
                 {errors.cuppingDate && <p className="text-red-500 text-xs">{errors.cuppingDate.message}</p>}
               </div>
-            </div>
+              </div>
 
-            <div className="pt-4 border-t border-gray-100">
+              {/* Template Selection */}
+              <div className="pt-4 border-t border-gray-100">
+                <label className="text-sm font-medium text-gray-700 block mb-3">评分模式</label>
+                <div className="grid grid-cols-2 gap-4">
+                  <label className={`flex flex-col p-4 rounded-lg border cursor-pointer transition-all ${
+                    template === 'standard' ? 'bg-amber-50 border-amber-500 ring-1 ring-amber-500' : 'bg-white border-gray-200 hover:border-gray-300'
+                  }`}>
+                    <div className="flex items-center gap-2 mb-1">
+                      <input 
+                        type="radio" 
+                        value="standard" 
+                        {...register("template")} 
+                        className="text-amber-600 focus:ring-amber-500"
+                      />
+                      <span className="font-semibold text-gray-900">专业评分 (Standard)</span>
+                    </div>
+                    <p className="text-xs text-gray-500 ml-6">基于 COE/SCA 标准，包含干湿香、风味、酸度等完整评分项。</p>
+                  </label>
+
+                  <label className={`flex flex-col p-4 rounded-lg border cursor-pointer transition-all ${
+                    template === 'voting' ? 'bg-amber-50 border-amber-500 ring-1 ring-amber-500' : 'bg-white border-gray-200 hover:border-gray-300'
+                  }`}>
+                    <div className="flex items-center gap-2 mb-1">
+                      <input 
+                        type="radio" 
+                        value="voting" 
+                        {...register("template")} 
+                        className="text-amber-600 focus:ring-amber-500"
+                      />
+                      <span className="font-semibold text-gray-900">大众投票 (Voting)</span>
+                    </div>
+                    <p className="text-xs text-gray-500 ml-6">简化模式，仅需选择喜好和评语，适合展会大众参与。</p>
+                  </label>
+                </div>
+              </div>
+
+              <div className="pt-4 border-t border-gray-100">
               <div className="flex items-start gap-4">
                 <div className="flex items-center h-6">
                   <input

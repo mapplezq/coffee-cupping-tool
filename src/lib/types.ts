@@ -7,6 +7,7 @@ export interface CuppingSession {
   blindMode?: boolean // Blind cupping mode
   blindLabelType?: 'letter' | 'number' // 'letter' (A, B, C) or 'number' (1, 2, 3)
   type?: 'internal' | 'event' // 'internal' by default, 'event' for public events
+  template?: 'standard' | 'voting' // 'standard' for SCA scoring, 'voting' for quick vote
   isGuest?: boolean // Indicate if this session was joined via a share link
   createdAt: string
   updatedAt: string
@@ -63,6 +64,7 @@ export interface CuppingScore {
   totalScore: number
   defects: Defect[]
   notes: string
+  isFavorite?: boolean // For voting mode
   createdAt: string
 }
 
