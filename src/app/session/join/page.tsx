@@ -175,7 +175,7 @@ function JoinSessionContent() {
           className="w-full py-3 bg-amber-700 text-white rounded-xl font-bold hover:bg-amber-800 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
         >
           {isProcessing ? <Loader2 className="w-5 h-5 animate-spin" /> : null}
-          {isProcessing ? '正在创建...' : '确认加入并开始打分'}
+          {isProcessing ? '正在创建...' : (sessionData.template === 'voting' ? '确认加入并开始投票' : '确认加入并开始打分')}
         </button>
         <Link 
           href="/"
