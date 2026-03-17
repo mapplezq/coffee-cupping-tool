@@ -3,12 +3,13 @@
 import { useState } from 'react';
 import Link from "next/link";
 import { useSessions } from "@/lib/context";
-import { Plus, Coffee, Calendar, BarChart3, Settings, Trash2 } from "lucide-react";
+import { Plus, Coffee, Calendar, BarChart3, Settings, Trash2, Search, Filter } from "lucide-react";
 import SettingsModal from '@/components/SettingsModal';
 
 export default function Home() {
   const { sessions, loading, deleteSession } = useSessions();
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
   const handleDelete = async (e: React.MouseEvent, id: string) => {
     e.preventDefault(); // Prevent navigation
@@ -16,6 +17,10 @@ export default function Home() {
       await deleteSession(id);
     }
   };
+
+  const filteredSessions = sessions.filter(session => 
+    session.name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   if (loading) {
     return (
@@ -81,45 +86,96 @@ export default function Home() {
         <div>
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold text-gray-900">最近杯测活动</h2>
-            <span className="text-xs text-gray-400 font-medium bg-gray-100 px-2 py-1 rounded-full">{sessions.length} 场</span>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-gray-400 font-medium bg-gray-100 px-2 py-1 rounded-full">{filteredSessions.length} 场</span>
+            </div>
           </div>
-          {sessions.length === 0 ? (
+          
+          {/* Search Bar */}
+          <div className="relative mb-6">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <Search className="h-4 w-4 text-gray-400" />
+            </div>
+            <input
+              type="text"
+              className="block w-full pl-10 pr-3 py-2 border border-gray-200 rounded-lg leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-amber-500 focus:border-amber-500 sm:text-sm transition duration-150 ease-in-out"
+              placeholder="搜索杯测活动..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          </div>
+
+          {filteredSessions.length === 0 ? (
             <div className="text-center py-12 bg-white rounded-xl border border-dashed border-gray-200">
               <Coffee className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-              <p className="text-gray-500">暂无杯测活动，请点击新建开始！</p>
+              <p className="text-gray-500">
+                {searchQuery ? '没有找到匹配的活动' : '暂无杯测活动，请点击新建开始！'}
+              </p>
             </div>
           ) : (
             <div className="space-y-4">
-              {sessions.map((session) => (
+              {filteredSessions.map((session) => (
                 <Link 
                   key={session.id} 
                   href={`/session/${session.id}`}
-                  className="block bg-white p-4 rounded-xl shadow-sm border border-gray-100 hover:border-amber-200 hover:shadow-md transition-all"
+                  className="block bg-white p-4 rounded-xl shadow-sm border border-gray-100 hover:border-amber-200 hover:shadow-md transition-all group"
                 >
                   <div className="flex justify-between items-start">
-                    <div>
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="font-mono text-sm font-bold bg-gray-100 px-2 py-0.5 rounded text-gray-700">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-2 flex-wrap">
+                        <h3 className="text-base font-bold text-gray-900 truncate pr-2">
                           {session.name}
-                        </span>
-                        <span className={`text-xs px-2 py-0.5 rounded-full ${
-                          session.status === 'completed' ? 'bg-green-100 text-green-700' :
-                          session.status === 'synced' ? 'bg-blue-100 text-blue-700' :
-                          'bg-yellow-100 text-yellow-700'
+                        </h3>
+                        
+                        {/* Status Badge */}
+                        <span className={`text-xs px-2 py-0.5 rounded-md border ${
+                          session.status === 'completed' ? 'bg-green-50 text-green-700 border-green-200' :
+                          session.status === 'synced' ? 'bg-blue-50 text-blue-700 border-blue-200' :
+                          'bg-yellow-50 text-yellow-700 border-yellow-200'
                         }`}>
                           {session.status === 'completed' ? '已完成' :
                            session.status === 'synced' ? '已同步' : '草稿'}
                         </span>
+
+                        {/* Type Badge */}
+                        <span className={`text-xs px-2 py-0.5 rounded-md border ${
+                          session.type === 'event' 
+                            ? 'bg-purple-50 text-purple-700 border-purple-200' 
+                            : 'bg-gray-50 text-gray-600 border-gray-200'
+                        }`}>
+                          {session.type === 'event' ? '公开活动' : '内部杯测'}
+                        </span>
+
+                        {/* Template Badge */}
+                        <span className={`text-xs px-2 py-0.5 rounded-md border ${
+                          session.template === 'voting'
+                            ? 'bg-amber-50 text-amber-700 border-amber-200'
+                            : 'bg-slate-50 text-slate-600 border-slate-200'
+                        }`}>
+                          {session.template === 'voting' ? '大众投票' : '专业打分'}
+                        </span>
                       </div>
-                      <div className="text-sm text-gray-500 flex items-center gap-3">
-                        <span>杯测日期: {new Date(session.cuppingDate).toLocaleDateString()}</span>
-                        <span>•</span>
-                        <span>{session.samples.length} 个样品</span>
+                      
+                      <div className="flex items-center gap-4 text-xs text-gray-500 mt-2">
+                        <div className="flex items-center gap-1">
+                          <Calendar className="w-3.5 h-3.5" />
+                          <span>{new Date(session.cuppingDate).toLocaleDateString()}</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <Coffee className="w-3.5 h-3.5" />
+                          <span>{session.samples.length} 支样品</span>
+                        </div>
+                        {session.blindMode && (
+                           <span className="px-1.5 py-0.5 bg-gray-100 text-gray-600 rounded text-[10px]">
+                             盲测
+                           </span>
+                        )}
                       </div>
                     </div>
+                    
                     <button
                       onClick={(e) => handleDelete(e, session.id)}
-                      className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                      className="p-2 ml-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100"
                       title="删除会话"
                     >
                       <Trash2 className="w-4 h-4" />
