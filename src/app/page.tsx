@@ -19,7 +19,7 @@ export default function Home() {
   };
 
   const filteredSessions = sessions.filter(session => 
-    session.name.toLowerCase().includes(searchQuery.toLowerCase())
+    (session.name || '').toLowerCase().includes((searchQuery || '').toLowerCase())
   );
 
   if (loading) {

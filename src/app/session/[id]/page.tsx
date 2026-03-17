@@ -479,6 +479,17 @@ export default function SessionDetailPage() {
           </button>
         </div>
 
+        {/* Voting Results Button */}
+        <div className="max-w-xl mx-auto mt-6 flex justify-center">
+          <button
+            onClick={() => setIsResultModalOpen(true)}
+            className="flex items-center gap-2 px-4 py-2 text-amber-700 bg-amber-50 hover:bg-amber-100 rounded-lg transition-colors text-sm font-medium"
+          >
+            <ListChecks className="w-4 h-4" />
+            查看我的投票记录
+          </button>
+        </div>
+
         {/* Share Modal for Voting Mode */}
         {isShareOpen && (
           <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
@@ -548,7 +559,7 @@ export default function SessionDetailPage() {
         <div className="min-h-screen bg-white flex flex-col">
           <div className="p-4 border-b flex justify-between items-center shrink-0 sticky top-0 bg-white z-10 shadow-sm">
             <div className="flex flex-col">
-              <h2 className="text-xl font-bold text-gray-900">我的杯测结果</h2>
+              <h2 className="text-xl font-bold text-gray-900">{session.template === 'voting' ? '我的投票记录' : '我的杯测结果'}</h2>
               <span className="text-xs text-gray-500">{session.name}</span>
             </div>
             <button onClick={() => setIsResultModalOpen(false)} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
@@ -573,17 +584,23 @@ export default function SessionDetailPage() {
                         <div className="text-xs" style={{ color: '#6b7280' }}>{sample.origin} · {sample.process}</div>
                       </div>
                       <div className="shrink-0 text-right">
-                        {sample.score ? (
-                          <div className="text-xl font-bold" style={{ color: '#d97706' }}>{sample.score.totalScore.toFixed(2)}</div>
+                        {session.template === 'voting' ? (
+                          sample.score?.isFavorite ? (
+                            <Heart className="w-6 h-6 text-red-500 fill-current" />
+                          ) : null
                         ) : (
-                          <span className="text-xs" style={{ color: '#9ca3af' }}>未评分</span>
+                          sample.score ? (
+                            <div className="text-xl font-bold" style={{ color: '#d97706' }}>{sample.score.totalScore.toFixed(2)}</div>
+                          ) : (
+                            <span className="text-xs" style={{ color: '#9ca3af' }}>未评分</span>
+                          )
                         )}
                       </div>
                     </div>
                     
                     {(sample.score?.notes) && (
                        <div className="text-sm p-3 rounded-lg border mt-2" style={{ color: '#78350f', backgroundColor: '#fffbeb', borderColor: '#fef3c7' }}>
-                         <span className="font-medium text-xs block mb-0.5" style={{ color: '#92400e' }}>风味描述:</span>
+                         <span className="font-medium text-xs block mb-0.5" style={{ color: '#92400e' }}>评价:</span>
                          {sample.score.notes}
                        </div>
                     )}
@@ -853,7 +870,7 @@ export default function SessionDetailPage() {
           <div className="min-h-full flex flex-col">
             <div className="p-4 border-b flex justify-between items-center shrink-0 sticky top-0 bg-white z-10 shadow-sm">
               <div className="flex flex-col">
-                <h2 className="text-xl font-bold text-gray-900">我的杯测结果</h2>
+                <h2 className="text-xl font-bold text-gray-900">{session.template === 'voting' ? '我的投票记录' : '我的杯测结果'}</h2>
                 <span className="text-xs text-gray-500">{session.name}</span>
               </div>
               <button onClick={() => setIsResultModalOpen(false)} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
@@ -878,17 +895,23 @@ export default function SessionDetailPage() {
                           <div className="text-xs text-gray-500">{sample.origin} · {sample.process}</div>
                         </div>
                         <div className="shrink-0 text-right">
-                          {sample.score ? (
-                            <div className="text-xl font-bold text-amber-600">{sample.score.totalScore.toFixed(2)}</div>
+                          {session.template === 'voting' ? (
+                            sample.score?.isFavorite ? (
+                              <Heart className="w-6 h-6 text-red-500 fill-current" />
+                            ) : null
                           ) : (
-                            <span className="text-xs text-gray-400">未评分</span>
+                            sample.score ? (
+                              <div className="text-xl font-bold text-amber-600">{sample.score.totalScore.toFixed(2)}</div>
+                            ) : (
+                              <span className="text-xs text-gray-400">未评分</span>
+                            )
                           )}
                         </div>
                       </div>
                       
                       {(sample.score?.notes) && (
                          <div className="text-sm text-amber-900 bg-amber-50 p-3 rounded-lg border border-amber-100 mt-2">
-                           <span className="font-medium text-amber-800/70 text-xs block mb-0.5">风味描述:</span>
+                           <span className="font-medium text-amber-800/70 text-xs block mb-0.5">评价:</span>
                            {sample.score.notes}
                          </div>
                       )}
