@@ -153,6 +153,7 @@ export default function SessionDetailPage() {
     if (!session) return '';
     const shareData = {
       name: session.name,
+      template: session.template, // Include template type
       cuppingDate: session.cuppingDate,
       blindMode: session.blindMode, // Include blind mode settings
       blindLabelType: session.blindLabelType,

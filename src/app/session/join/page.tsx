@@ -61,6 +61,7 @@ function JoinSessionContent() {
       const newSession = {
         id: sessionId,
         name: sessionData.name,
+        template: sessionData.template || 'standard', // Restore template type, default to standard
         cuppingDate: sessionData.cuppingDate || new Date().toISOString(),
         status: 'draft' as const,
         blindMode: sessionData.blindMode, // Restore blind mode settings
