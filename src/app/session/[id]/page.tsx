@@ -319,7 +319,7 @@ export default function SessionDetailPage() {
       };
       await updateSession(syncedSession);
       setSession(syncedSession);
-      alert('同步成功！');
+      alert(session.template === 'voting' ? '投票成功！' : '同步成功！');
     } catch (error: any) {
       console.error("Sync error:", error);
       const errorMessage = error.message.includes('Missing configuration') || error.message.includes('Server configuration error')
@@ -379,9 +379,18 @@ export default function SessionDetailPage() {
              <h1 className="text-2xl font-bold text-gray-900">{session.name}</h1>
              <p className="text-sm text-gray-500">大众投票模式 · 请选择您喜爱的样品</p>
            </div>
-           <button onClick={handleSync} disabled={isSyncing} className="px-4 py-2 bg-amber-600 text-white rounded-lg text-sm font-medium">
-             {isSyncing ? '提交中...' : '提交投票'}
-           </button>
+           <div className="flex items-center gap-3">
+             <button 
+               onClick={() => setIsShareOpen(true)}
+               className="p-2 text-gray-600 hover:bg-gray-100 rounded-full transition-colors"
+               title="分享活动"
+             >
+               <Share2 className="w-5 h-5" />
+             </button>
+             <button onClick={handleSync} disabled={isSyncing} className="px-4 py-2 bg-amber-600 text-white rounded-lg text-sm font-medium shadow-sm hover:bg-amber-700 transition-colors disabled:opacity-50">
+               {isSyncing ? '提交中...' : '提交投票'}
+             </button>
+           </div>
         </div>
 
         {/* Name Input Modal (Reused) */}
@@ -463,6 +472,65 @@ export default function SessionDetailPage() {
             {isSyncing ? '正在提交...' : '提交我的投票'}
           </button>
         </div>
+
+        {/* Share Modal for Voting Mode */}
+        {isShareOpen && (
+          <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+            <div className="bg-white rounded-2xl shadow-xl w-full max-w-md animate-in fade-in zoom-in duration-200 max-h-[90vh] flex flex-col">
+              <div className="p-6 border-b flex justify-between items-center shrink-0">
+                <h2 className="text-xl font-bold text-gray-900">邀请大众评审加入</h2>
+                <button onClick={() => setIsShareOpen(false)} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
+                  <X className="w-5 h-5 text-gray-400" />
+                </button>
+              </div>
+              
+              <div className="p-6 space-y-6 flex flex-col items-center overflow-y-auto">
+                <div 
+                  id="share-card" 
+                  className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm w-full space-y-4"
+                >
+                  <div className="text-center space-y-1">
+                    <h3 className="font-bold text-lg text-gray-900">{session.name}</h3>
+                    <p className="text-sm text-gray-500">{formatDate(session.cuppingDate)}</p>
+                  </div>
+
+                  <div className="border-t border-b border-gray-100 py-4 space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-500">样品数量</span>
+                      <span className="font-medium text-gray-900">{session.samples.length} 支</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-500">模式</span>
+                      <span className="font-medium text-amber-600">
+                        大众投票
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="flex justify-center py-2">
+                    <div className="p-2 bg-white rounded-lg border border-gray-100">
+                      <QRCodeSVG value={getShareUrl()} size={180} />
+                    </div>
+                  </div>
+                  
+                  <p className="text-center text-xs text-gray-400">
+                    扫码或访问链接参与投票
+                  </p>
+                </div>
+
+                <div className="w-full">
+                  <button
+                    onClick={handleCopyLink}
+                    className="w-full flex items-center justify-center gap-2 py-3 px-4 bg-amber-600 hover:bg-amber-700 text-white rounded-xl font-medium transition-colors shadow-sm"
+                  >
+                    <Copy className="w-4 h-4" />
+                    复制链接
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
