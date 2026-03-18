@@ -583,7 +583,7 @@ export default function SessionDetailPage() {
         <div className="min-h-screen bg-white flex flex-col">
           <div className="p-4 border-b flex justify-between items-center shrink-0 sticky top-0 bg-white z-10 shadow-sm">
             <div className="flex flex-col">
-              <h2 className="text-xl font-bold text-gray-900">{session.template === 'voting' ? '我的投票记录' : '我的杯测结果'}</h2>
+              <h2 className="text-xl font-bold text-gray-900">{(session as any).template === 'voting' ? '我的投票记录' : '我的杯测结果'}</h2>
               <span className="text-xs text-gray-500">{session.name}</span>
             </div>
             <button onClick={() => setIsResultModalOpen(false)} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
@@ -900,7 +900,7 @@ export default function SessionDetailPage() {
           <div className="min-h-full flex flex-col">
             <div className="p-4 border-b flex justify-between items-center shrink-0 sticky top-0 bg-white z-10 shadow-sm">
               <div className="flex flex-col">
-                <h2 className="text-xl font-bold text-gray-900">{session.template === 'voting' ? '我的投票记录' : '我的杯测结果'}</h2>
+                <h2 className="text-xl font-bold text-gray-900">{(session as any).template === 'voting' ? '我的投票记录' : '我的杯测结果'}</h2>
                 <span className="text-xs text-gray-500">{session.name}</span>
               </div>
               <button onClick={() => setIsResultModalOpen(false)} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
