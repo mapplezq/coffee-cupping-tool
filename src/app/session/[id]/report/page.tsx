@@ -169,7 +169,9 @@ export default function ReportPage({ params }: ReportPageProps) {
                   <h3 className="text-xl font-bold text-gray-900">
                     {session.blindMode ? (session.blindLabelType === 'number' ? `${activeSampleIndex + 1}` : String.fromCharCode(65 + activeSampleIndex)) : activeSample.name}
                   </h3>
-                  <p className="text-sm text-gray-500 mt-1">{activeSample.origin} · {activeSample.process}</p>
+                  <p className="text-sm text-gray-500 mt-1">
+                    {!session.blindMode && `${activeSample.origin} · ${activeSample.process}`}
+                  </p>
                 </div>
                 <div className="text-right bg-amber-50 px-3 py-1 rounded-lg">
                   <span className="text-xs text-amber-600 font-medium uppercase block">{isVotingMode ? '总喜好度' : '平均分'}</span>

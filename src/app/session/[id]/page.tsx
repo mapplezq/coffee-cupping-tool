@@ -457,8 +457,12 @@ export default function SessionDetailPage() {
                   
                   {/* Info */}
                   <div className="flex-1 min-w-0">
-                    <div className="font-bold text-gray-900 line-clamp-2">{sample.name}</div>
-                    <div className="text-xs text-gray-500 mt-1">{sample.origin} · {sample.process}</div>
+                    <div className="font-bold text-gray-900 line-clamp-2">
+                      {getSampleLabel(sample, index)}
+                    </div>
+                    {!session.blindMode && (
+                      <div className="text-xs text-gray-500 mt-1">{sample.origin} · {sample.process}</div>
+                    )}
                   </div>
 
                   {/* Actions - 3 Hearts */}
@@ -538,8 +542,12 @@ export default function SessionDetailPage() {
                     <div className="flex-1 min-w-0">
                       <div className="flex justify-between items-start">
                         <div className="min-w-0 pr-2">
-                          <div className="font-bold text-gray-900 truncate">{sample.name}</div>
-                          <div className="text-xs text-gray-500">{sample.origin} · {sample.process}</div>
+                          <div className="font-bold text-gray-900 truncate">
+                            {getSampleLabel(sample, index)}
+                          </div>
+                          {!session.blindMode && (
+                            <div className="text-xs text-gray-500">{sample.origin} · {sample.process}</div>
+                          )}
                         </div>
                         <div className="shrink-0 text-right flex gap-1">
                           {session.template === 'voting' ? (
@@ -670,8 +678,12 @@ export default function SessionDetailPage() {
                   <div className="flex-1 min-w-0">
                     <div className="flex justify-between items-start">
                       <div className="min-w-0 pr-2">
-                        <div className="font-bold truncate" style={{ color: '#111827' }}>{sample.name}</div>
-                        <div className="text-xs" style={{ color: '#6b7280' }}>{sample.origin} · {sample.process}</div>
+                        <div className="font-bold truncate" style={{ color: '#111827' }}>
+                          {getSampleLabel(sample, index)}
+                        </div>
+                        {!session.blindMode && (
+                          <div className="text-xs" style={{ color: '#6b7280' }}>{sample.origin} · {sample.process}</div>
+                        )}
                       </div>
                       <div className="shrink-0 text-right flex gap-1">
                         {session.template === 'voting' ? (
@@ -987,8 +999,12 @@ export default function SessionDetailPage() {
                     <div className="flex-1 min-w-0">
                       <div className="flex justify-between items-start">
                         <div className="min-w-0 pr-2">
-                          <div className="font-bold text-gray-900 truncate">{sample.name}</div>
-                          <div className="text-xs text-gray-500">{sample.origin} · {sample.process}</div>
+                          <div className="font-bold text-gray-900 truncate">
+                            {getSampleLabel(sample, index)}
+                          </div>
+                          {!session.blindMode && (
+                            <div className="text-xs text-gray-500">{sample.origin} · {sample.process}</div>
+                          )}
                         </div>
                         <div className="shrink-0 text-right flex gap-1">
                           {session.template === 'voting' ? (
