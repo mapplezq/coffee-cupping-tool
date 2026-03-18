@@ -103,10 +103,8 @@ export default function SessionDetailPage() {
     if (!session) return;
     if (session.template === 'voting') {
         const hasVotes = session.samples.some(s => (s.score?.voteScore || 0) > 0);
-        if (!hasVotes) {
-            alert('您还没有进行任何投票哦，快去给喜欢的样品点赞吧！');
-            return;
-        }
+        // Remove the validation that blocks users from seeing results if they haven't voted
+        // Users might want to check results (empty state) or check what they haven't voted for yet
     }
     setIsResultModalOpen(true);
   };
@@ -411,9 +409,6 @@ export default function SessionDetailPage() {
                title="分享活动"
              >
                <Share2 className="w-5 h-5" />
-             </button>
-             <button onClick={handleSync} disabled={isSyncing} className="px-4 py-2 bg-amber-600 text-white rounded-lg text-sm font-medium shadow-sm hover:bg-amber-700 transition-colors disabled:opacity-50">
-               {isSyncing ? '提交中...' : '提交投票'}
              </button>
            </div>
         </div>
