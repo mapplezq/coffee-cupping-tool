@@ -99,6 +99,18 @@ export default function SessionDetailPage() {
     }
   };
 
+  const handleResultsClick = () => {
+    if (!session) return;
+    if (session.template === 'voting') {
+        const hasVotes = session.samples.some(s => (s.score?.voteScore || 0) > 0);
+        if (!hasVotes) {
+            alert('您还没有进行任何投票哦，快去给喜欢的样品点赞吧！');
+            return;
+        }
+    }
+    setIsResultModalOpen(true);
+  };
+
   const handleVoteNoteChange = async (sample: SessionWithSamples['samples'][0], note: string) => {
     // Similar to handleVote but updates notes
      const savedConfig = localStorage.getItem('feishu_config');
@@ -390,6 +402,9 @@ export default function SessionDetailPage() {
              </div>
            </div>
            <div className="flex items-center gap-3">
+             <Link href={`/session/${sessionId}/report`} className="p-2 text-gray-600 hover:bg-gray-100 rounded-full transition-colors" title="查看汇总报告">
+               <BarChart3 className="w-5 h-5" />
+             </Link>
              <button 
                onClick={() => setIsShareOpen(true)}
                className="p-2 text-gray-600 hover:bg-gray-100 rounded-full transition-colors"
@@ -482,7 +497,7 @@ export default function SessionDetailPage() {
         <div className="fixed bottom-0 left-0 right-0 p-4 bg-white border-t border-gray-200 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] z-40 safe-area-bottom">
           <div className="max-w-xl mx-auto flex gap-3">
             <button
-              onClick={() => setIsResultModalOpen(true)}
+              onClick={handleResultsClick}
               className="flex-1 flex items-center justify-center gap-2 px-4 py-3 text-amber-700 bg-amber-50 hover:bg-amber-100 rounded-xl transition-colors font-medium"
             >
               <ListChecks className="w-5 h-5" />
