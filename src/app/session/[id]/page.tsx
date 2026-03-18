@@ -511,7 +511,76 @@ export default function SessionDetailPage() {
           </div>
         </div>
 
-        {/* Share Modal for Voting Mode */}
+        {/* Results Modal */}
+      {isResultModalOpen && (
+        <div className="fixed inset-0 bg-white z-50 overflow-y-auto">
+          <div className="min-h-full flex flex-col">
+            <div className="p-4 border-b flex justify-between items-center shrink-0 sticky top-0 bg-white z-10 shadow-sm">
+              <div className="flex flex-col">
+                <h2 className="text-xl font-bold text-gray-900">{(session as any).template === 'voting' ? '我的投票记录' : '我的杯测结果'}</h2>
+                <span className="text-xs text-gray-500">{session.name}</span>
+              </div>
+              <button onClick={() => setIsResultModalOpen(false)} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
+                <X className="w-6 h-6 text-gray-600" />
+              </button>
+            </div>
+            
+            <div className="flex-1 p-4 max-w-2xl mx-auto w-full space-y-3 pb-24">
+              {[...session.samples]
+                .map((sample, index) => (
+                <div key={sample.id} className="bg-gray-50 p-4 rounded-xl border border-gray-100 flex items-start gap-3">
+                    <div className="flex items-center justify-center w-8 h-8 rounded-full bg-amber-100 text-amber-700 font-bold text-sm shrink-0 mt-1">
+                      {session.blindMode && session.blindLabelType === 'letter' 
+                        ? String.fromCharCode(65 + session.samples.indexOf(sample)) 
+                        : `${session.samples.indexOf(sample) + 1}`}
+                    </div>
+                    
+                    <div className="flex-1 min-w-0">
+                      <div className="flex justify-between items-start">
+                        <div className="min-w-0 pr-2">
+                          <div className="font-bold text-gray-900 truncate">{sample.name}</div>
+                          <div className="text-xs text-gray-500">{sample.origin} · {sample.process}</div>
+                        </div>
+                        <div className="shrink-0 text-right flex gap-1">
+                          {session.template === 'voting' ? (
+                            sample.score?.voteScore ? (
+                               // Render the number of hearts based on voteScore
+                               [...Array(sample.score.voteScore)].map((_, i) => (
+                                 <Heart key={i} className="w-5 h-5 text-red-500 fill-current" />
+                               ))
+                            ) : sample.score?.isFavorite ? (
+                               // Fallback for old records
+                               <Heart className="w-5 h-5 text-red-500 fill-current" />
+                            ) : null
+                          ) : (
+                            sample.score ? (
+                              <div className="text-xl font-bold text-amber-600">{sample.score.totalScore.toFixed(2)}</div>
+                            ) : (
+                              <span className="text-xs text-gray-400">未评分</span>
+                            )
+                          )}
+                        </div>
+                      </div>
+                      
+                      {(sample.score?.notes) && (
+                         <div className="text-sm text-amber-900 bg-amber-50 p-3 rounded-lg border border-amber-100 mt-2">
+                           <span className="font-medium text-amber-800/70 text-xs block mb-0.5">评价:</span>
+                           {sample.score.notes}
+                         </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+            </div>
+
+            <div className="p-6 border-t bg-gray-50 mt-auto safe-area-bottom">
+              <p className="text-xs text-center text-gray-500">此页面支持手机系统长截图功能</p>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* Share Modal for Voting Mode */}
         {isShareOpen && (
           <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
             <div className="bg-white rounded-2xl shadow-xl w-full max-w-md animate-in fade-in zoom-in duration-200 max-h-[90vh] flex flex-col">
