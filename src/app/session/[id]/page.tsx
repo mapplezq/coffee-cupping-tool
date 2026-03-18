@@ -103,8 +103,10 @@ export default function SessionDetailPage() {
     if (!session) return;
     if (session.template === 'voting') {
         const hasVotes = session.samples.some(s => (s.score?.voteScore || 0) > 0);
-        // Remove the validation that blocks users from seeing results if they haven't voted
-        // Users might want to check results (empty state) or check what they haven't voted for yet
+        if (!hasVotes) {
+            alert('您还没有进行任何投票哦，快去给喜欢的样品点赞吧！');
+            return;
+        }
     }
     setIsResultModalOpen(true);
   };
@@ -501,7 +503,7 @@ export default function SessionDetailPage() {
             <button 
               onClick={handleSync} 
               disabled={isSyncing}
-              className="flex-[2] flex items-center justify-center gap-2 px-4 py-3 bg-amber-600 hover:bg-amber-700 text-white rounded-xl shadow-sm transition-all disabled:opacity-70 font-bold"
+              className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-amber-600 hover:bg-amber-700 text-white rounded-xl shadow-sm transition-all disabled:opacity-70 font-bold"
             >
               {isSyncing ? <RefreshCw className="w-5 h-5 animate-spin" /> : <CheckCircle className="w-5 h-5" />}
               {isSyncing ? '正在提交...' : '提交我的投票'}
