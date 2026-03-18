@@ -38,7 +38,7 @@ export default function SessionDetailPage() {
     );
   };
 
-  const handleVote = async (sample: SessionWithSamples['samples'][0]) => {
+  const handleVote = async (sample: SessionWithSamples['samples'][0], scoreValue: number) => {
     // Check if cupper name is configured
     const savedConfig = localStorage.getItem('feishu_config');
     const config = savedConfig ? JSON.parse(savedConfig) : {};
@@ -48,8 +48,11 @@ export default function SessionDetailPage() {
       return;
     }
 
-    const isCurrentlyFavorite = !!sample.score?.isFavorite;
-    const newFavoriteStatus = !isCurrentlyFavorite;
+    const currentScore = sample.score?.voteScore || 0;
+    // Toggle off if clicking the same score, otherwise set to new score
+    const newVoteScore = currentScore === scoreValue ? 0 : scoreValue;
+    // For backwards compatibility and visual cues, if score > 0 it is a favorite
+    const newFavoriteStatus = newVoteScore > 0;
 
     try {
       // Optimistic update
@@ -62,6 +65,7 @@ export default function SessionDetailPage() {
           createdAt: sample.score?.createdAt || new Date().toISOString(),
           cupperName: config.cupperName,
           isFavorite: newFavoriteStatus,
+          voteScore: newVoteScore,
           notes: sample.score?.notes || '',
           // Correct field names based on types.ts
           fragrance: sample.score?.fragrance || 0,
@@ -423,32 +427,39 @@ export default function SessionDetailPage() {
 
         <div className="max-w-xl mx-auto space-y-4">
           {session.samples.map((sample, index) => {
+            const voteScore = sample.score?.voteScore || 0;
+            // Backwards compatibility for old records that only have isFavorite
             const isFavorite = !!sample.score?.isFavorite;
+            const displayScore = voteScore > 0 ? voteScore : (isFavorite ? 3 : 0); // Default old favorites to 3 stars
+            
             const note = sample.score?.notes || '';
             const isNoteExpanded = expandedNotes.includes(sample.id);
 
             return (
-              <div key={sample.id} className={`bg-white rounded-xl border transition-all ${isFavorite ? 'border-amber-500 shadow-md ring-1 ring-amber-500' : 'border-gray-200 shadow-sm'}`}>
+              <div key={sample.id} className={`bg-white rounded-xl border transition-all ${displayScore > 0 ? 'border-amber-500 shadow-md ring-1 ring-amber-500' : 'border-gray-200 shadow-sm'}`}>
                 <div className="p-4 flex items-start gap-4">
                   {/* Label */}
-                  <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg shrink-0 mt-1 ${isFavorite ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-500'}`}>
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg shrink-0 mt-1 ${displayScore > 0 ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-500'}`}>
                     {index + 1}
                   </div>
                   
                   {/* Info */}
-                  <div className="flex-1 min-w-0" onClick={() => handleVote(sample)}>
+                  <div className="flex-1 min-w-0">
                     <div className="font-bold text-gray-900 line-clamp-2">{sample.name}</div>
                     <div className="text-xs text-gray-500 mt-1">{sample.origin} · {sample.process}</div>
                   </div>
 
-                  {/* Actions */}
-                  <div className="flex items-center gap-2 shrink-0">
-                    <button 
-                      onClick={(e) => { e.stopPropagation(); handleVote(sample); }}
-                      className={`p-2 rounded-full transition-all active:scale-90 ${isFavorite ? 'text-red-500 bg-red-50' : 'text-gray-300 hover:bg-gray-100'}`}
-                    >
-                      <Heart className={`w-8 h-8 ${isFavorite ? 'fill-current' : ''}`} />
-                    </button>
+                  {/* Actions - 3 Hearts */}
+                  <div className="flex items-center gap-1 shrink-0">
+                    {[1, 2, 3].map((star) => (
+                      <button 
+                        key={star}
+                        onClick={(e) => { e.stopPropagation(); handleVote(sample, star); }}
+                        className={`p-1.5 rounded-full transition-all active:scale-90 ${star <= displayScore ? 'text-red-500 hover:bg-red-50' : 'text-gray-300 hover:bg-gray-100'}`}
+                      >
+                        <Heart className={`w-6 h-6 sm:w-7 sm:h-7 ${star <= displayScore ? 'fill-current' : ''}`} />
+                      </button>
+                    ))}
                   </div>
                 </div>
 
@@ -467,27 +478,25 @@ export default function SessionDetailPage() {
           })}
         </div>
         
-        {/* Floating Submit Button for Mobile */}
-        <div className="fixed bottom-6 left-0 right-0 px-4 md:hidden">
-          <button 
-            onClick={handleSync} 
-            disabled={isSyncing}
-            className="w-full max-w-xl mx-auto bg-amber-600 text-white py-3 rounded-xl shadow-lg font-bold text-lg active:scale-95 transition-all flex items-center justify-center gap-2 disabled:opacity-70"
-          >
-            {isSyncing ? <RefreshCw className="w-5 h-5 animate-spin" /> : <CheckCircle className="w-5 h-5" />}
-            {isSyncing ? '正在提交...' : '提交我的投票'}
-          </button>
-        </div>
-
-        {/* Voting Results Button */}
-        <div className="max-w-xl mx-auto mt-6 flex justify-center">
-          <button
-            onClick={() => setIsResultModalOpen(true)}
-            className="flex items-center gap-2 px-4 py-2 text-amber-700 bg-amber-50 hover:bg-amber-100 rounded-lg transition-colors text-sm font-medium"
-          >
-            <ListChecks className="w-4 h-4" />
-            查看我的投票记录
-          </button>
+        {/* Voting Action Buttons (Bottom Sticky) */}
+        <div className="fixed bottom-0 left-0 right-0 p-4 bg-white border-t border-gray-200 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] z-40 safe-area-bottom">
+          <div className="max-w-xl mx-auto flex gap-3">
+            <button
+              onClick={() => setIsResultModalOpen(true)}
+              className="flex-1 flex items-center justify-center gap-2 px-4 py-3 text-amber-700 bg-amber-50 hover:bg-amber-100 rounded-xl transition-colors font-medium"
+            >
+              <ListChecks className="w-5 h-5" />
+              查看记录
+            </button>
+            <button 
+              onClick={handleSync} 
+              disabled={isSyncing}
+              className="flex-[2] flex items-center justify-center gap-2 px-4 py-3 bg-amber-600 hover:bg-amber-700 text-white rounded-xl shadow-sm transition-all disabled:opacity-70 font-bold"
+            >
+              {isSyncing ? <RefreshCw className="w-5 h-5 animate-spin" /> : <CheckCircle className="w-5 h-5" />}
+              {isSyncing ? '正在提交...' : '提交我的投票'}
+            </button>
+          </div>
         </div>
 
         {/* Share Modal for Voting Mode */}
@@ -583,10 +592,16 @@ export default function SessionDetailPage() {
                         <div className="font-bold truncate" style={{ color: '#111827' }}>{sample.name}</div>
                         <div className="text-xs" style={{ color: '#6b7280' }}>{sample.origin} · {sample.process}</div>
                       </div>
-                      <div className="shrink-0 text-right">
+                      <div className="shrink-0 text-right flex gap-1">
                         {session.template === 'voting' ? (
-                          sample.score?.isFavorite ? (
-                            <Heart className="w-6 h-6 text-red-500 fill-current" />
+                          sample.score?.voteScore ? (
+                             // Render the number of hearts based on voteScore
+                             [...Array(sample.score.voteScore)].map((_, i) => (
+                               <Heart key={i} className="w-5 h-5 text-red-500 fill-current" />
+                             ))
+                          ) : sample.score?.isFavorite ? (
+                             // Fallback for old records
+                             <Heart className="w-5 h-5 text-red-500 fill-current" />
                           ) : null
                         ) : (
                           sample.score ? (
@@ -894,10 +909,16 @@ export default function SessionDetailPage() {
                           <div className="font-bold text-gray-900 truncate">{sample.name}</div>
                           <div className="text-xs text-gray-500">{sample.origin} · {sample.process}</div>
                         </div>
-                        <div className="shrink-0 text-right">
+                        <div className="shrink-0 text-right flex gap-1">
                           {session.template === 'voting' ? (
-                            sample.score?.isFavorite ? (
-                              <Heart className="w-6 h-6 text-red-500 fill-current" />
+                            sample.score?.voteScore ? (
+                               // Render the number of hearts based on voteScore
+                               [...Array(sample.score.voteScore)].map((_, i) => (
+                                 <Heart key={i} className="w-5 h-5 text-red-500 fill-current" />
+                               ))
+                            ) : sample.score?.isFavorite ? (
+                               // Fallback for old records
+                               <Heart className="w-5 h-5 text-red-500 fill-current" />
                             ) : null
                           ) : (
                             sample.score ? (

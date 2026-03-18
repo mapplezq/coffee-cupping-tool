@@ -15,34 +15,7 @@ interface ReportPageProps {
   params: Promise<{ id: string }>;
 }
 
-// Mock Data for Event Mode
-const MOCK_AGGREGATE_DATA = {
-  totalParticipants: 42,
-  averageScores: [
-    { name: 'A', score: 86.5, rank: 1 },
-    { name: 'B', score: 84.2, rank: 3 },
-    { name: 'C', score: 85.8, rank: 2 },
-    { name: 'D', score: 82.0, rank: 4 },
-  ],
-  radarData: {
-    'A': [
-      { subject: '干/湿香', A: 8.5, fullMark: 10 },
-      { subject: '风味', A: 8.8, fullMark: 10 },
-      { subject: '余韵', A: 8.2, fullMark: 10 },
-      { subject: '酸质', A: 8.6, fullMark: 10 },
-      { subject: '醇厚度', A: 8.4, fullMark: 10 },
-      { subject: '平衡度', A: 8.5, fullMark: 10 },
-      { subject: '整体', A: 8.7, fullMark: 10 },
-    ],
-    // Add other samples if needed
-  },
-  topFlavors: {
-    'A': ['茉莉花', '柑橘', '红茶', '蜂蜜'],
-    'B': ['坚果', '巧克力', '焦糖'],
-    'C': ['蓝莓', '草莓', '奶油'],
-    'D': ['草本', '黑巧克力'],
-  } as Record<string, string[]>
-};
+// Mock Data for Event Mode - Removed from global scope to use inside component based on template
 
 export default function ReportPage({ params }: ReportPageProps) {
   const { id } = use(params);
@@ -71,6 +44,43 @@ export default function ReportPage({ params }: ReportPageProps) {
     const d = new Date(dateString);
     return `${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}`;
   };
+
+    // Support voting template processing
+    const isVotingMode = session.template === 'voting';
+
+    // Mock Data for Demo
+    const MOCK_AGGREGATE_DATA = {
+      totalParticipants: isVotingMode ? 150 : 42,
+      averageScores: isVotingMode ? [
+        { name: 'A', score: 285, rank: 1 }, // Representing total stars
+        { name: 'B', score: 210, rank: 3 },
+        { name: 'C', score: 260, rank: 2 },
+        { name: 'D', score: 180, rank: 4 },
+      ] : [
+        { name: 'A', score: 86.5, rank: 1 },
+        { name: 'B', score: 84.2, rank: 3 },
+        { name: 'C', score: 85.8, rank: 2 },
+        { name: 'D', score: 82.0, rank: 4 },
+      ],
+      // Radar only makes sense for standard scoring, not voting
+      radarData: {
+        'A': [
+          { subject: '干/湿香', A: 8.5, fullMark: 10 },
+          { subject: '风味', A: 8.8, fullMark: 10 },
+          { subject: '余韵', A: 8.2, fullMark: 10 },
+          { subject: '酸质', A: 8.6, fullMark: 10 },
+          { subject: '醇厚度', A: 8.4, fullMark: 10 },
+          { subject: '平衡度', A: 8.5, fullMark: 10 },
+          { subject: '整体', A: 8.7, fullMark: 10 },
+        ],
+      },
+      topFlavors: {
+        'A': ['茉莉花', '柑橘', '红茶', '蜂蜜'],
+        'B': ['坚果', '巧克力', '焦糖'],
+        'C': ['蓝莓', '草莓', '奶油'],
+        'D': ['草本', '黑巧克力'],
+      } as Record<string, string[]>
+    };
 
   // Prepare data for charts based on REAL samples (mapped to mock data for demo)
   const rankingData = samples.map((s: any, index: number) => ({
@@ -162,7 +172,7 @@ export default function ReportPage({ params }: ReportPageProps) {
                   <p className="text-sm text-gray-500 mt-1">{activeSample.origin} · {activeSample.process}</p>
                 </div>
                 <div className="text-right bg-amber-50 px-3 py-1 rounded-lg">
-                  <span className="text-xs text-amber-600 font-medium uppercase block">平均分</span>
+                  <span className="text-xs text-amber-600 font-medium uppercase block">{isVotingMode ? '总喜好度' : '平均分'}</span>
                   <span className="text-xl font-bold text-amber-700">
                     {MOCK_AGGREGATE_DATA.averageScores[activeSampleIndex % 4].score}
                   </span>
@@ -170,24 +180,43 @@ export default function ReportPage({ params }: ReportPageProps) {
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                {/* Radar Chart */}
-                <div className="h-64 w-full flex justify-center">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <RadarChart cx="50%" cy="50%" outerRadius="80%" data={radarData}>
-                      <PolarGrid stroke="#e5e7eb" />
-                      <PolarAngleAxis dataKey="subject" tick={{ fill: '#6b7280', fontSize: 12 }} />
-                      <PolarRadiusAxis angle={30} domain={[6, 10]} tick={false} axisLine={false} />
-                      <Radar
-                        name="平均表现"
-                        dataKey="A"
-                        stroke="#d97706"
-                        strokeWidth={2}
-                        fill="#d97706"
-                        fillOpacity={0.3}
-                      />
-                    </RadarChart>
-                  </ResponsiveContainer>
-                </div>
+                {isVotingMode ? (
+                  <div className="flex items-center justify-center h-full bg-gray-50 rounded-xl p-8 text-center">
+                    <div>
+                      <div className="text-4xl font-bold text-amber-500 mb-2">
+                        {MOCK_AGGREGATE_DATA.averageScores[activeSampleIndex % 4].score} <span className="text-lg text-gray-500 font-normal">分</span>
+                      </div>
+                      <p className="text-gray-500 text-sm">综合了所有参与者的投票得分</p>
+                      <div className="mt-4 flex justify-center gap-1">
+                        {/* Just a visual representation of high score */}
+                        {[1, 2, 3, 4, 5].map((star) => (
+                           <svg key={star} className={`w-6 h-6 ${star <= 4 ? 'text-amber-500' : 'text-gray-300'}`} fill="currentColor" viewBox="0 0 20 20">
+                             <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                           </svg>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  /* Radar Chart */
+                  <div className="h-64 w-full flex justify-center">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <RadarChart cx="50%" cy="50%" outerRadius="80%" data={radarData}>
+                        <PolarGrid stroke="#e5e7eb" />
+                        <PolarAngleAxis dataKey="subject" tick={{ fill: '#6b7280', fontSize: 12 }} />
+                        <PolarRadiusAxis angle={30} domain={[6, 10]} tick={false} axisLine={false} />
+                        <Radar
+                          name="平均表现"
+                          dataKey="A"
+                          stroke="#d97706"
+                          strokeWidth={2}
+                          fill="#d97706"
+                          fillOpacity={0.3}
+                        />
+                      </RadarChart>
+                    </ResponsiveContainer>
+                  </div>
+                )}
 
                 {/* Flavor Cloud & Stats */}
                 <div className="space-y-6">

@@ -71,11 +71,14 @@ export async function POST(request: Request) {
     if (session.template === 'voting') {
         records = (session as SessionWithSamples).samples.map(sample => {
             const score = sample.score;
+            // Handle both new voteScore and legacy isFavorite
+            const numericScore = score?.voteScore ? score.voteScore : (score?.isFavorite ? 3 : 0);
             return {
                 "杯测名称": session.name,
                 "样品名称": sample.name,
                 "投票人": score?.cupperName || "匿名",
-                "是否喜欢": score?.isFavorite ? "是" : "", // Using text "是" for checkbox or select
+                "喜好度": numericScore, // New numeric field (1, 2, 3). Requires Feishu table schema update
+                "是否喜欢": numericScore > 0 ? "是" : "", // Legacy field
                 "评语": score?.notes || "",
                 "投票时间": new Date().getTime(), // Or score?.createdAt if available
             };
