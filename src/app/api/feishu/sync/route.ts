@@ -72,7 +72,8 @@ export async function POST(request: Request) {
         records = (session as SessionWithSamples).samples.map(sample => {
             const score = sample.score;
             // Handle both new voteScore and legacy isFavorite
-            const numericScore = score?.voteScore ? score.voteScore : (score?.isFavorite ? 3 : 0);
+            // Fix: In voting, the client stores it in voteScore. If it's undefined, it's 0.
+            const numericScore = typeof score?.voteScore === 'number' ? score.voteScore : (score?.isFavorite ? 3 : 0);
             
             // Fix: ensure cupperName is taken from client config if score doesn't have it (e.g. untouched sample)
             const cupperName = score?.cupperName || clientConfig?.cupperName || "匿名";

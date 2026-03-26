@@ -82,18 +82,22 @@ export default function ReportPage({ params }: ReportPageProps) {
     const participants = new Set();
     records.forEach(r => {
       const name = r[participantField];
+      // IMPORTANT: In Feishu, if the field is empty, it might be undefined.
+      // If the sync route pushed "匿名" it will be exactly that string.
+      // We should also ensure it doesn't count "匿名" multiple times as 1 user if there are multiple submissions, 
+      // but without unique IDs it's hard. Let's rely on name first.
       if (name && name !== '匿名') {
         participants.add(name);
       }
     });
     
     // If we have records but no valid names, it means everyone was anonymous, so at least 1 person participated
-    // To correctly count anonymous users who submitted, we can count the number of unique submission timestamps if available,
-    // or simply count the total records divided by number of samples as a fallback approximation.
+    // To correctly count anonymous users who submitted, we can count the number of unique submission timestamps if available
     let totalParticipants = participants.size;
     if (totalParticipants === 0 && records.length > 0) {
-      const sampleCount = currentSession.samples.length || 1;
-      totalParticipants = Math.ceil(records.length / sampleCount);
+      // If there are no unique names (all '匿名'), we can try to guess by unique timestamps (since a user submits all at once)
+      const uniqueTimes = new Set(records.map(r => r['投票时间']).filter(Boolean));
+      totalParticipants = uniqueTimes.size > 0 ? uniqueTimes.size : 1;
     }
 
     // Group by sample name
@@ -129,7 +133,8 @@ export default function ReportPage({ params }: ReportPageProps) {
       if (isVoting) {
         // Sum of "喜好度" or count of "是否喜欢"
         const totalStars = sRecords.reduce((sum, r) => {
-          if (r['喜好度'] != null && r['喜好度'] !== '') {
+          // In Feishu, number fields might come as numbers or strings. Check carefully.
+          if (r['喜好度'] !== undefined && r['喜好度'] !== null && r['喜好度'] !== '') {
             const score = Number(r['喜好度']);
             if (!isNaN(score)) return sum + score;
           }
@@ -207,24 +212,25 @@ export default function ReportPage({ params }: ReportPageProps) {
     // Support voting template processing
     const isVotingMode = session.template === 'voting';
 
-  // Prepare data for charts based on REAL samples
-  const rankingData = samples.map((s: any, index: number) => {
-    const sName = s.name;
-    const scoreItem = reportData.averageScores.find((x: any) => x.name === sName);
-    
-    // Default label to Name if not blind, otherwise use Index or Letter
-    let label = sName;
-    if (session.blindMode) {
-        label = session.blindLabelType === 'number' ? `${index + 1}` : String.fromCharCode(65 + index);
-    }
-
-    return {
-      name: label,
-      score: scoreItem ? scoreItem.score : 0,
-      fill: '#d97706',
-      originalName: sName
-    };
-  }).sort((a: any, b: any) => b.score - a.score);
+    // Prepare data for charts based on REAL samples
+    const rankingData = samples.map((s: any, index: number) => {
+      const sName = s.name;
+      // In reportData, we used sName to group. We must find the score by sName.
+      const scoreItem = reportData.averageScores.find((x: any) => x.name === sName);
+      
+      // Default label to Name if not blind, otherwise use Index or Letter
+      let label = sName;
+      if (session.blindMode) {
+          label = session.blindLabelType === 'number' ? `${index + 1}` : String.fromCharCode(65 + index);
+      }
+  
+      return {
+        name: label,
+        score: scoreItem ? scoreItem.score : 0,
+        fill: '#d97706',
+        originalName: sName
+      };
+    }).sort((a: any, b: any) => b.score - a.score);
 
   const activeSample = samples.find((s: any) => s.id === activeSampleId);
   const activeSampleIndex = samples.indexOf(activeSample);
