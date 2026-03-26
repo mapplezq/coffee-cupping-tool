@@ -146,9 +146,15 @@ export default function ReportPage({ params }: ReportPageProps) {
       if (isVoting) {
         // Sum of "喜好度" or count of "是否喜欢"
         const totalStars = sRecords.reduce((sum, r) => {
-          // Check for '喜好度' or '评分' (based on screenshot showing # 喜好度)
-          // Feishu might return this as a number or string. Let's strictly check for valid numbers.
-          const starValue = r['喜好度'] !== undefined ? r['喜好度'] : r['评分'];
+          // In Feishu, the exact key might literally be "# 喜好度" or "喜好度" depending on how API returns it.
+          // Let's aggressively search for ANY key containing "喜好度" or "评分".
+          let starValue;
+          for (const key in r) {
+             if (key.includes('喜好度') || key.includes('评分')) {
+                 starValue = r[key];
+                 break;
+             }
+          }
           
           if (starValue !== undefined && starValue !== null && starValue !== '') {
             const score = Number(starValue);
