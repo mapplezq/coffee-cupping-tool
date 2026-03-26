@@ -131,6 +131,7 @@ export default function SessionDetailPage() {
           createdAt: sample.score?.createdAt || new Date().toISOString(),
           cupperName: config.cupperName,
           isFavorite: sample.score?.isFavorite, // keep existing
+          voteScore: sample.score?.voteScore || 0, // IMPORTANT: KEEP VOTE SCORE
           notes: note,
           // Correct field names
           fragrance: sample.score?.fragrance || 0,

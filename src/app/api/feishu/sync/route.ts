@@ -71,19 +71,18 @@ export async function POST(request: Request) {
     if (session.template === 'voting') {
         records = (session as SessionWithSamples).samples.map(sample => {
             const score = sample.score;
+            // Create a default valid score object if none exists so that cupperName is always present
+            // We use the top-level cupperName from config or session.
+            const resolvedCupperName = clientConfig?.cupperName || score?.cupperName || session?.cupperName || "匿名";
+            
             // Handle both new voteScore and legacy isFavorite
             // Fix: In voting, the client stores it in voteScore. If it's undefined, it's 0.
             const numericScore = typeof score?.voteScore === 'number' ? score.voteScore : (score?.isFavorite ? 3 : 0);
             
-            // Fix: ensure cupperName is taken from client config ALWAYS
-            // Check body config first, then score, then session cupper name.
-            // When submitting, client Config is usually passed via body.config.
-            const cupperName = clientConfig?.cupperName || score?.cupperName || session?.cupperName || "匿名";
-            
             return {
                 "杯测名称": session.name,
                 "样品名称": sample.name,
-                "投票人": cupperName,
+                "投票人": resolvedCupperName,
                 // We provide multiple keys just in case the schema in Feishu changed but the API expects exact match.
                 // Standard naming:
                 "喜好度": Number(numericScore), 
