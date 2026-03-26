@@ -482,14 +482,11 @@ export default function SessionDetailPage() {
                 {/* Note Input - Always visible in voting mode */}
                 <div className="px-4 pb-4">
                     <textarea
-                      value={note}
-                      onChange={(e) => handleVoteNoteChange(sample, e.target.value)}
+                      defaultValue={note}
+                      onBlur={(e) => handleVoteNoteChange(sample, e.target.value)}
                       placeholder="写点评价... (选填)"
                       className="w-full p-3 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 focus:bg-white transition-all resize-none"
                       rows={2}
-                      onCompositionStart={(e) => e.stopPropagation()}
-                      onCompositionUpdate={(e) => e.stopPropagation()}
-                      onCompositionEnd={(e) => e.stopPropagation()}
                     />
                 </div>
               </div>

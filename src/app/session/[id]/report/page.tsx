@@ -77,10 +77,24 @@ export default function ReportPage({ params }: ReportPageProps) {
   const processReportData = (records: any[], currentSession: any) => {
     const isVoting = currentSession.template === 'voting';
     
-    // Total participants
+    // Total participants (Deduplicate by Participant Name)
     const participantField = isVoting ? '投票人' : '杯测人';
-    const participants = new Set(records.map(r => r[participantField]).filter(Boolean));
-    const totalParticipants = participants.size;
+    const participants = new Set();
+    records.forEach(r => {
+      const name = r[participantField];
+      if (name && name !== '匿名') {
+        participants.add(name);
+      }
+    });
+    
+    // If we have records but no valid names, it means everyone was anonymous, so at least 1 person participated
+    // To correctly count anonymous users who submitted, we can count the number of unique submission timestamps if available,
+    // or simply count the total records divided by number of samples as a fallback approximation.
+    let totalParticipants = participants.size;
+    if (totalParticipants === 0 && records.length > 0) {
+      const sampleCount = currentSession.samples.length || 1;
+      totalParticipants = Math.ceil(records.length / sampleCount);
+    }
 
     // Group by sample name
     const sampleGroups: Record<string, any[]> = {};
@@ -197,8 +211,15 @@ export default function ReportPage({ params }: ReportPageProps) {
   const rankingData = samples.map((s: any, index: number) => {
     const sName = s.name;
     const scoreItem = reportData.averageScores.find((x: any) => x.name === sName);
+    
+    // Default label to Name if not blind, otherwise use Index or Letter
+    let label = sName;
+    if (session.blindMode) {
+        label = session.blindLabelType === 'number' ? `${index + 1}` : String.fromCharCode(65 + index);
+    }
+
     return {
-      name: session.blindMode ? (session.blindLabelType === 'number' ? `${index + 1}` : String.fromCharCode(65 + index)) : sName,
+      name: label,
       score: scoreItem ? scoreItem.score : 0,
       fill: '#d97706',
       originalName: sName

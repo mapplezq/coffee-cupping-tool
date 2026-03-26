@@ -89,7 +89,8 @@ export async function POST(request: Request) {
         });
         
         // Remove empty records where user didn't vote and didn't leave a note
-        records = records.filter(r => r["喜好度"] > 0 || r["评语"].trim() !== "");
+        // User request: Don't remove empty records, submit 0 scores as well to calculate proper totals/averages
+        // BUT, if we submit 5 records for 1 user, they are not "empty", they are just 0 score. That is correct.
     } else {
         // Standard Scoring Sync
         records = (session as SessionWithSamples).samples.map(sample => {
