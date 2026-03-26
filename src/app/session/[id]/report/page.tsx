@@ -86,7 +86,7 @@ export default function ReportPage({ params }: ReportPageProps) {
     
     records.forEach(r => {
       // In Feishu, People fields might come back as an array of objects or a string.
-      // E.g. [{"name": "Mapple", ...}] or just "Mapple"
+      // E.g. [{"name": "Mapple", ...}] or just "Mapple", or even [{"text":"Mapple ","type":"text"}]
       let name = r[participantField];
       if (Array.isArray(name) && name.length > 0) {
         name = name[0].name || name[0].text || name[0];
@@ -94,8 +94,8 @@ export default function ReportPage({ params }: ReportPageProps) {
       if (typeof name === 'object' && name !== null) {
          name = name.name || name.text;
       }
-      // Ensure it's a string
-      name = typeof name === 'string' ? name : '';
+      // Ensure it's a string and trim whitespace
+      name = typeof name === 'string' ? name.trim() : '';
 
       // Try to group by name first, if no name, group by timestamp to assume it's one submission session
       const groupKey = (name && name !== '匿名') ? name : `anon_${r['投票时间'] || r['创建时间'] || Math.random()}`;
@@ -116,7 +116,14 @@ export default function ReportPage({ params }: ReportPageProps) {
     // Group by sample name
     const sampleGroups: Record<string, any[]> = {};
     records.forEach(r => {
-      const sName = r['样品名称'];
+      // Handle array format for Sample Name
+      let sName = r['样品名称'];
+      if (Array.isArray(sName) && sName.length > 0) {
+        sName = sName[0].text || sName[0].name || sName[0];
+      } else if (typeof sName === 'object' && sName !== null) {
+        sName = sName.text || sName.name;
+      }
+      
       if (!sName) return;
       if (!sampleGroups[sName]) sampleGroups[sName] = [];
       sampleGroups[sName].push(r);
@@ -133,7 +140,15 @@ export default function ReportPage({ params }: ReportPageProps) {
 
       // Extract flavors/notes
       const noteField = isVoting ? '评语' : '风味笔记';
-      const notes = sRecords.map(r => r[noteField]).filter(Boolean);
+      const notes = sRecords.map(r => {
+        let note = r[noteField];
+        if (Array.isArray(note) && note.length > 0) {
+          note = note[0].text || note[0].name || note[0];
+        } else if (typeof note === 'object' && note !== null) {
+          note = note.text || note.name;
+        }
+        return note;
+      }).filter(Boolean);
       // Simple word extraction for flavors (split by common punctuation)
       const words = notes.flatMap(n => n.split(/[,，、。\s]+/)).filter(w => w.length > 1 && w !== '【展会活动】');
       const wordCounts: Record<string, number> = {};
@@ -157,13 +172,24 @@ export default function ReportPage({ params }: ReportPageProps) {
           }
           
           if (starValue !== undefined && starValue !== null && starValue !== '') {
+            // Check if it's an array from Feishu (e.g. [{"text":"1","type":"text"}])
+            if (Array.isArray(starValue) && starValue.length > 0) {
+              starValue = starValue[0].text || starValue[0].name || starValue[0];
+            } else if (typeof starValue === 'object' && starValue !== null) {
+              starValue = starValue.text || starValue.name;
+            }
+            
             const score = Number(starValue);
             if (!isNaN(score)) {
               return sum + score;
             }
           }
           // Fallback to legacy field if new numeric field is missing or invalid
-          return sum + (r['是否喜欢'] === '是' ? 3 : 0);
+          let isFav = r['是否喜欢'];
+          if (Array.isArray(isFav) && isFav.length > 0) {
+             isFav = isFav[0].text;
+          }
+          return sum + (isFav === '是' ? 3 : 0);
         }, 0);
         
         averageScores.push({
