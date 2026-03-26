@@ -83,10 +83,9 @@ export async function POST(request: Request) {
                 "杯测名称": session.name,
                 "样品名称": sample.name,
                 "投票人": resolvedCupperName,
-                // We provide multiple keys just in case the schema in Feishu changed but the API expects exact match.
-                // Standard naming:
+                // DO NOT provide multiple keys. Bitable will reject the request if a key doesn't exist in the schema.
+                // Since the test GET returned exactly "喜好度", we must only use that.
                 "喜好度": Number(numericScore), 
-                "# 喜好度": Number(numericScore), // Fallback for literal matches
                 "是否喜欢": numericScore > 0 ? "是" : "", // Legacy field
                 "评语": score?.notes || "",
                 "投票时间": new Date().getTime(), // Or score?.createdAt if available
