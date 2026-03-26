@@ -373,12 +373,27 @@ export default function ReportPage({ params }: ReportPageProps) {
             <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 animate-in fade-in slide-in-from-bottom-4 duration-300">
               <div className="flex justify-between items-start mb-6">
                 <div>
-                  <h3 className="text-xl font-bold text-gray-900">
-                    {rankingData.find((x:any) => x.originalName === activeSample.name)?.name || activeSample.name}
-                  </h3>
-                  <p className="text-sm text-gray-500 mt-1">
-                    {!session.blindMode && `${activeSample.origin} · ${activeSample.process}`}
-                  </p>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-xl font-bold text-gray-900">
+                      {rankingData.find((x:any) => x.originalName === activeSample.name)?.name || activeSample.name}
+                    </h3>
+                    {session.blindMode && (
+                      <span className="text-xs text-amber-600 bg-amber-100 px-2 py-0.5 rounded">
+                        盲测模式
+                      </span>
+                    )}
+                  </div>
+                  {session.blindMode ? (
+                    <div className="mt-2 p-2 bg-amber-50 rounded border border-amber-100/50">
+                      <span className="text-gray-500 text-xs block mb-1">真实样品信息</span>
+                      <span className="font-medium text-gray-800 text-sm">{activeSample.name}</span>
+                      <span className="text-xs text-gray-500 ml-2">{activeSample.origin} · {activeSample.process}</span>
+                    </div>
+                  ) : (
+                    <p className="text-sm text-gray-500 mt-1">
+                      {`${activeSample.origin} · ${activeSample.process}`}
+                    </p>
+                  )}
                 </div>
                 <div className="text-right bg-amber-50 px-3 py-1 rounded-lg">
                   <span className="text-xs text-amber-600 font-medium uppercase block">{isVotingMode ? '总喜好度' : '平均分'}</span>
@@ -397,12 +412,17 @@ export default function ReportPage({ params }: ReportPageProps) {
                       </div>
                       <p className="text-gray-500 text-sm">综合了所有参与者的投票得分</p>
                       <div className="mt-4 flex justify-center gap-1">
-                        {/* Just a visual representation of high score */}
-                        {[1, 2, 3, 4, 5].map((star) => (
-                           <svg key={star} className={`w-6 h-6 ${star <= 4 ? 'text-amber-500' : 'text-gray-300'}`} fill="currentColor" viewBox="0 0 20 20">
-                             <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                        {/* Dynamic representation of stars based on average score */}
+                        {/* If max possible is 3 stars per person, maybe we just show stars out of 3? */}
+                        {/* Or we can just calculate average stars out of 3 based on total score / participants */}
+                        {[1, 2, 3].map((star) => {
+                          const avgScore = reportData.totalParticipants > 0 ? activeScore / reportData.totalParticipants : 0;
+                          return (
+                           <svg key={star} className={`w-8 h-8 ${star <= Math.round(avgScore) ? 'text-red-500' : 'text-gray-200'}`} fill="currentColor" viewBox="0 0 24 24">
+                             <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
                            </svg>
-                        ))}
+                          );
+                        })}
                       </div>
                     </div>
                   </div>
