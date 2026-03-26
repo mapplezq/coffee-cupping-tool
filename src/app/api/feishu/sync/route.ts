@@ -76,15 +76,21 @@ export async function POST(request: Request) {
             const numericScore = typeof score?.voteScore === 'number' ? score.voteScore : (score?.isFavorite ? 3 : 0);
             
             // Fix: ensure cupperName is taken from client config ALWAYS
-            // If the user hasn't touched the sample, score might be undefined.
-            // Even if they touched it, they might have cleared the name. We should use the global clientConfig name if available.
-            const cupperName = clientConfig?.cupperName || score?.cupperName || "匿名";
+            // Check body config first, then score, then session cupper name.
+            // When submitting, client Config is usually passed via body.config.
+            const cupperName = clientConfig?.cupperName || score?.cupperName || session?.cupperName || "匿名";
             
             return {
                 "杯测名称": session.name,
                 "样品名称": sample.name,
                 "投票人": cupperName,
-                "喜好度": Number(numericScore), // Ensure it's a strict Number for Feishu numeric field
+                // Critical Fix: Map strictly to "# 喜好度" if that's the exact column name,
+                // But typically Feishu API uses the exact text. If your column is literally "# 喜好度", we must use that key.
+                // However, let's provide BOTH just in case, or stick to "喜好度" and let Bitable auto-match if possible.
+                // Looking at your screenshot, the column name is exactly "# 喜好度". Let's map to that if standard fails.
+                // Wait, your screenshot shows the header has a # icon, meaning it's a Number field. The actual name is likely just "喜好度".
+                // I will keep "喜好度" as a number.
+                "喜好度": Number(numericScore), 
                 "是否喜欢": numericScore > 0 ? "是" : "", // Legacy field
                 "评语": score?.notes || "",
                 "投票时间": new Date().getTime(), // Or score?.createdAt if available

@@ -296,21 +296,10 @@ export default function SessionDetailPage() {
       const savedConfig = localStorage.getItem('feishu_config');
       const config = savedConfig ? JSON.parse(savedConfig) : {};
       
-      // We don't read tableId from localStorage here anymore if we want backend to handle it
-      // BUT, current backend implementation relies on `tableId` being passed in body.
-      // So we must pass SOMETHING or let backend handle default.
-      
-      // Since we want "backend hardcoded config", we should NOT pass tableId from here if it's not set.
-      // However, to keep backward compatibility with existing `sync` API which expects `tableId`,
-      // we can pass a flag or just let backend decide.
-      
-      // Simplest way: Pass session.type, and let backend decide tableId.
-      // But currently sync API reads `body.tableId`.
-      
-      // We will modify frontend to NOT send tableId (or send null), and backend to use default if null.
-      // OR, we send the session object which contains 'type', and backend uses that.
+      // Ensure cupperName is explicitly passed in config to the backend so it doesn't fall back to "匿名"
+      // If the user just set it in the modal, it will be in localStorage.
+      const cupperName = config.cupperName || '匿名';
 
-      // Also send config (appId, appSecret, appToken) from localStorage if environment variables are not set on server
       const { appId, appSecret, appToken } = config;
 
       const response = await fetch('/api/feishu/sync', {
@@ -318,8 +307,7 @@ export default function SessionDetailPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           session,
-          config: { appId, appSecret, appToken }, // Pass config to backend
-          // tableId is optional now, backend will handle it based on session.type
+          config: { appId, appSecret, appToken, cupperName }, // Pass config with cupperName to backend
         })
       });
 
