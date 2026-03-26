@@ -80,25 +80,27 @@ export default function ReportPage({ params }: ReportPageProps) {
     // Total participants (Deduplicate by Participant Name)
     const participantField = isVoting ? '投票人' : '杯测人';
     const participants = new Set();
+    
+    // Group records by submitter to calculate exact participant count even if name is missing
+    const submitterGroups: Record<string, any[]> = {};
+    
     records.forEach(r => {
       const name = r[participantField];
-      // IMPORTANT: In Feishu, if the field is empty, it might be undefined.
-      // If the sync route pushed "匿名" it will be exactly that string.
-      // We should also ensure it doesn't count "匿名" multiple times as 1 user if there are multiple submissions, 
-      // but without unique IDs it's hard. Let's rely on name first.
+      // Try to group by name first, if no name, group by timestamp to assume it's one submission session
+      const groupKey = (name && name !== '匿名') ? name : `anon_${r['投票时间'] || r['创建时间'] || Math.random()}`;
+      
+      if (!submitterGroups[groupKey]) {
+        submitterGroups[groupKey] = [];
+      }
+      submitterGroups[groupKey].push(r);
+      
       if (name && name !== '匿名') {
         participants.add(name);
       }
     });
     
-    // If we have records but no valid names, it means everyone was anonymous, so at least 1 person participated
-    // To correctly count anonymous users who submitted, we can count the number of unique submission timestamps if available
-    let totalParticipants = participants.size;
-    if (totalParticipants === 0 && records.length > 0) {
-      // If there are no unique names (all '匿名'), we can try to guess by unique timestamps (since a user submits all at once)
-      const uniqueTimes = new Set(records.map(r => r['投票时间']).filter(Boolean));
-      totalParticipants = uniqueTimes.size > 0 ? uniqueTimes.size : 1;
-    }
+    // The true number of participants is the number of distinct groups we found
+    let totalParticipants = Object.keys(submitterGroups).length;
 
     // Group by sample name
     const sampleGroups: Record<string, any[]> = {};
@@ -134,8 +136,10 @@ export default function ReportPage({ params }: ReportPageProps) {
         // Sum of "喜好度" or count of "是否喜欢"
         const totalStars = sRecords.reduce((sum, r) => {
           // In Feishu, number fields might come as numbers or strings. Check carefully.
-          if (r['喜好度'] !== undefined && r['喜好度'] !== null && r['喜好度'] !== '') {
-            const score = Number(r['喜好度']);
+          // Also check if the key is correct based on the schema mapping.
+          const starValue = r['喜好度'] || r['喜好度 (1-3星)'] || r['评分'];
+          if (starValue !== undefined && starValue !== null && starValue !== '') {
+            const score = Number(starValue);
             if (!isNaN(score)) return sum + score;
           }
           return sum + (r['是否喜欢'] === '是' ? 3 : 0);

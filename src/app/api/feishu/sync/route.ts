@@ -75,14 +75,16 @@ export async function POST(request: Request) {
             // Fix: In voting, the client stores it in voteScore. If it's undefined, it's 0.
             const numericScore = typeof score?.voteScore === 'number' ? score.voteScore : (score?.isFavorite ? 3 : 0);
             
-            // Fix: ensure cupperName is taken from client config if score doesn't have it (e.g. untouched sample)
-            const cupperName = score?.cupperName || clientConfig?.cupperName || "匿名";
+            // Fix: ensure cupperName is taken from client config ALWAYS
+            // If the user hasn't touched the sample, score might be undefined.
+            // Even if they touched it, they might have cleared the name. We should use the global clientConfig name if available.
+            const cupperName = clientConfig?.cupperName || score?.cupperName || "匿名";
             
             return {
                 "杯测名称": session.name,
                 "样品名称": sample.name,
                 "投票人": cupperName,
-                "喜好度": numericScore, // New numeric field (1, 2, 3). Requires Feishu table schema update
+                "喜好度": Number(numericScore), // Ensure it's a strict Number for Feishu numeric field
                 "是否喜欢": numericScore > 0 ? "是" : "", // Legacy field
                 "评语": score?.notes || "",
                 "投票时间": new Date().getTime(), // Or score?.createdAt if available
