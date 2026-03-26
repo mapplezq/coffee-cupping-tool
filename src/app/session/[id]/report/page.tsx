@@ -85,7 +85,18 @@ export default function ReportPage({ params }: ReportPageProps) {
     const submitterGroups: Record<string, any[]> = {};
     
     records.forEach(r => {
-      const name = r[participantField];
+      // In Feishu, People fields might come back as an array of objects or a string.
+      // E.g. [{"name": "Mapple", ...}] or just "Mapple"
+      let name = r[participantField];
+      if (Array.isArray(name) && name.length > 0) {
+        name = name[0].name || name[0].text || name[0];
+      }
+      if (typeof name === 'object' && name !== null) {
+         name = name.name || name.text;
+      }
+      // Ensure it's a string
+      name = typeof name === 'string' ? name : '';
+
       // Try to group by name first, if no name, group by timestamp to assume it's one submission session
       const groupKey = (name && name !== '匿名') ? name : `anon_${r['投票时间'] || r['创建时间'] || Math.random()}`;
       
@@ -135,13 +146,17 @@ export default function ReportPage({ params }: ReportPageProps) {
       if (isVoting) {
         // Sum of "喜好度" or count of "是否喜欢"
         const totalStars = sRecords.reduce((sum, r) => {
-          // In Feishu, number fields might come as numbers or strings. Check carefully.
-          // Also check if the key is correct based on the schema mapping.
-          const starValue = r['喜好度'] || r['喜好度 (1-3星)'] || r['评分'];
+          // Check for '喜好度' or '评分' (based on screenshot showing # 喜好度)
+          // Feishu might return this as a number or string. Let's strictly check for valid numbers.
+          const starValue = r['喜好度'] !== undefined ? r['喜好度'] : r['评分'];
+          
           if (starValue !== undefined && starValue !== null && starValue !== '') {
             const score = Number(starValue);
-            if (!isNaN(score)) return sum + score;
+            if (!isNaN(score)) {
+              return sum + score;
+            }
           }
+          // Fallback to legacy field if new numeric field is missing or invalid
           return sum + (r['是否喜欢'] === '是' ? 3 : 0);
         }, 0);
         

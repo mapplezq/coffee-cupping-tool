@@ -39,8 +39,8 @@ export async function POST(request: Request) {
 
     const records = await getRecordsFromBitable(appToken, tableId, sessionName, appId, appSecret);
 
-    // DEBUG: Log the first record to see the exact structure from Feishu
-    console.log("Feishu Report Sync - First Record:", records.length > 0 ? JSON.stringify(records[0], null, 2) : "No records found");
+    // DEBUG: Log the raw data to see exact fields from Feishu
+    console.log("Feishu Report Raw First Record:", JSON.stringify(records[0] || {}, null, 2));
 
     return NextResponse.json({ success: true, data: records });
   } catch (error: any) {
