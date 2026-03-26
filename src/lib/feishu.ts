@@ -59,3 +59,51 @@ export async function addRecordToBitable(appToken: string, tableId: string, reco
 
   return results;
 }
+
+export async function getRecordsFromBitable(appToken: string, tableId: string, sessionName: string, appId?: string, appSecret?: string) {
+  const token = await getTenantAccessToken(appId, appSecret);
+  
+  let allRecords: any[] = [];
+  let pageToken = "";
+  let hasMore = true;
+
+  const filter = {
+    conjunction: "and",
+    conditions: [
+      {
+        field_name: "杯测名称",
+        operator: "is",
+        value: [sessionName]
+      }
+    ]
+  };
+
+  while (hasMore) {
+    const response = await fetch(`https://open.feishu.cn/open-apis/bitable/v1/apps/${appToken}/tables/${tableId}/records/search?page_size=100${pageToken ? `&page_token=${pageToken}` : ''}`, {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${token}`,
+        "Content-Type": "application/json; charset=utf-8",
+      },
+      body: JSON.stringify({
+        filter,
+        automatic_fields: true
+      }),
+    });
+
+    const data = await response.json();
+    
+    if (data.code !== 0) {
+      throw new Error(`Failed to fetch records: ${data.msg}`);
+    }
+
+    if (data.data && data.data.items) {
+      allRecords = allRecords.concat(data.data.items.map((item: any) => item.fields));
+    }
+
+    hasMore = data.data.has_more;
+    pageToken = data.data.page_token;
+  }
+
+  return allRecords;
+}

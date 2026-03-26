@@ -23,6 +23,9 @@ export default function ReportPage({ params }: ReportPageProps) {
   const { sessions } = useSessions();
   const [session, setSession] = useState<any>(null);
   const [activeSampleId, setActiveSampleId] = useState<string>('');
+  const [reportData, setReportData] = useState<any>(null);
+  const [isLoadingReport, setIsLoadingReport] = useState(false);
+  const [reportError, setReportError] = useState<string>('');
 
   useEffect(() => {
     const foundSession = sessions.find(s => s.id === id);
@@ -31,10 +34,150 @@ export default function ReportPage({ params }: ReportPageProps) {
       if (foundSession.samples.length > 0) {
         setActiveSampleId(foundSession.samples[0].id);
       }
+      fetchReport(foundSession);
     }
   }, [id, sessions]);
 
+  const fetchReport = async (currentSession: any) => {
+    setIsLoadingReport(true);
+    setReportError('');
+    try {
+      const savedConfig = localStorage.getItem('feishu_config');
+      const config = savedConfig ? JSON.parse(savedConfig) : {};
+
+      const res = await fetch('/api/feishu/report', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sessionName: currentSession.name,
+          template: currentSession.template,
+          type: currentSession.type,
+          config: {
+            appId: config.appId,
+            appSecret: config.appSecret,
+            appToken: config.appToken,
+          }
+        })
+      });
+
+      const json = await res.json();
+      if (!res.ok) {
+        throw new Error(json.error || 'Failed to fetch report');
+      }
+
+      processReportData(json.data, currentSession);
+    } catch (err: any) {
+      console.error(err);
+      setReportError(err.message);
+    } finally {
+      setIsLoadingReport(false);
+    }
+  };
+
+  const processReportData = (records: any[], currentSession: any) => {
+    const isVoting = currentSession.template === 'voting';
+    
+    // Total participants
+    const participantField = isVoting ? '投票人' : '杯测人';
+    const participants = new Set(records.map(r => r[participantField]).filter(Boolean));
+    const totalParticipants = participants.size;
+
+    // Group by sample name
+    const sampleGroups: Record<string, any[]> = {};
+    records.forEach(r => {
+      const sName = r['样品名称'];
+      if (!sName) return;
+      if (!sampleGroups[sName]) sampleGroups[sName] = [];
+      sampleGroups[sName].push(r);
+    });
+
+    const averageScores: any[] = [];
+    const radarData: Record<string, any[]> = {};
+    const topFlavors: Record<string, string[]> = {};
+    const stats: Record<string, { high: number, low: number }> = {};
+
+    currentSession.samples.forEach((sample: any) => {
+      const sRecords = sampleGroups[sample.name] || [];
+      const sName = sample.name;
+
+      // Extract flavors/notes
+      const noteField = isVoting ? '评语' : '风味笔记';
+      const notes = sRecords.map(r => r[noteField]).filter(Boolean);
+      // Simple word extraction for flavors (split by common punctuation)
+      const words = notes.flatMap(n => n.split(/[,，、。\s]+/)).filter(w => w.length > 1 && w !== '【展会活动】');
+      const wordCounts: Record<string, number> = {};
+      words.forEach(w => wordCounts[w] = (wordCounts[w] || 0) + 1);
+      topFlavors[sName] = Object.entries(wordCounts)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 5)
+        .map(e => e[0]);
+
+      if (isVoting) {
+        // Sum of "喜好度" or count of "是否喜欢"
+        const totalStars = sRecords.reduce((sum, r) => {
+          const score = Number(r['喜好度']);
+          if (!isNaN(score)) return sum + score;
+          return sum + (r['是否喜欢'] === '是' ? 3 : 0);
+        }, 0);
+        
+        averageScores.push({
+          name: sName,
+          score: totalStars
+        });
+      } else {
+        // Standard mode calculations
+        const validScores = sRecords.map(r => Number(r['总分'])).filter(s => !isNaN(s) && s > 0);
+        const avgScore = validScores.length ? validScores.reduce((a, b) => a + b, 0) / validScores.length : 0;
+        
+        averageScores.push({
+          name: sName,
+          score: Number(avgScore.toFixed(2))
+        });
+
+        if (validScores.length > 0) {
+          stats[sName] = {
+            high: Math.max(...validScores),
+            low: Math.min(...validScores)
+          };
+        } else {
+          stats[sName] = { high: 0, low: 0 };
+        }
+
+        // Radar data
+        const subjects = ['香气', '风味', '余韵', '酸度', '醇厚度', '平衡度', '干净度'];
+        const avgRadar = subjects.map(sub => {
+          const vals = sRecords.map(r => Number(r[sub])).filter(v => !isNaN(v) && v > 0);
+          const avg = vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : 0;
+          return {
+            subject: sub,
+            A: Number(avg.toFixed(2)),
+            fullMark: 10
+          };
+        });
+        radarData[sName] = avgRadar;
+      }
+    });
+
+    // Sort and rank
+    averageScores.sort((a, b) => b.score - a.score);
+    averageScores.forEach((item, idx) => {
+      item.rank = idx + 1;
+    });
+
+    setReportData({
+      totalParticipants,
+      averageScores,
+      radarData,
+      topFlavors,
+      stats
+    });
+  };
+
   if (!session) return <div className="p-8 text-center">加载中...</div>;
+
+  if (isLoadingReport) return <div className="p-8 text-center">生成报告中，正在从飞书获取最新数据...</div>;
+  if (reportError) return <div className="p-8 text-center text-red-500">获取数据失败: {reportError}</div>;
+  if (!reportData) return <div className="p-8 text-center">暂无数据</div>;
 
   const isEvent = session.type === 'event';
   const samples = session.samples || [];
@@ -48,52 +191,23 @@ export default function ReportPage({ params }: ReportPageProps) {
     // Support voting template processing
     const isVotingMode = session.template === 'voting';
 
-    // Mock Data for Demo
-    const MOCK_AGGREGATE_DATA = {
-      totalParticipants: isVotingMode ? 150 : 42,
-      averageScores: isVotingMode ? [
-        { name: 'A', score: 285, rank: 1 }, // Representing total stars
-        { name: 'B', score: 210, rank: 3 },
-        { name: 'C', score: 260, rank: 2 },
-        { name: 'D', score: 180, rank: 4 },
-      ] : [
-        { name: 'A', score: 86.5, rank: 1 },
-        { name: 'B', score: 84.2, rank: 3 },
-        { name: 'C', score: 85.8, rank: 2 },
-        { name: 'D', score: 82.0, rank: 4 },
-      ],
-      // Radar only makes sense for standard scoring, not voting
-      radarData: {
-        'A': [
-          { subject: '干/湿香', A: 8.5, fullMark: 10 },
-          { subject: '风味', A: 8.8, fullMark: 10 },
-          { subject: '余韵', A: 8.2, fullMark: 10 },
-          { subject: '酸质', A: 8.6, fullMark: 10 },
-          { subject: '醇厚度', A: 8.4, fullMark: 10 },
-          { subject: '平衡度', A: 8.5, fullMark: 10 },
-          { subject: '整体', A: 8.7, fullMark: 10 },
-        ],
-      },
-      topFlavors: {
-        'A': ['茉莉花', '柑橘', '红茶', '蜂蜜'],
-        'B': ['坚果', '巧克力', '焦糖'],
-        'C': ['蓝莓', '草莓', '奶油'],
-        'D': ['草本', '黑巧克力'],
-      } as Record<string, string[]>
+  // Prepare data for charts based on REAL samples
+  const rankingData = samples.map((s: any, index: number) => {
+    const sName = s.name;
+    const scoreItem = reportData.averageScores.find((x: any) => x.name === sName);
+    return {
+      name: session.blindMode ? (session.blindLabelType === 'number' ? `${index + 1}` : String.fromCharCode(65 + index)) : sName,
+      score: scoreItem ? scoreItem.score : 0,
+      fill: '#d97706',
     };
-
-  // Prepare data for charts based on REAL samples (mapped to mock data for demo)
-  const rankingData = samples.map((s: any, index: number) => ({
-    name: session.blindMode ? (session.blindLabelType === 'number' ? `${index + 1}` : String.fromCharCode(65 + index)) : s.name,
-    score: MOCK_AGGREGATE_DATA.averageScores[index % 4].score, // Cycle through mock scores
-    fill: '#d97706',
-  })).sort((a: any, b: any) => b.score - a.score);
+  }).sort((a: any, b: any) => b.score - a.score);
 
   const activeSample = samples.find((s: any) => s.id === activeSampleId);
   const activeSampleIndex = samples.indexOf(activeSample);
   
-  // Use mock radar data for the selected sample
-  const radarData = MOCK_AGGREGATE_DATA.radarData['A']; // Always use 'A' for demo
+  const radarData = activeSample ? reportData.radarData[activeSample.name] : [];
+  const activeScoreItem = activeSample ? reportData.averageScores.find((x: any) => x.name === activeSample.name) : null;
+  const activeScore = activeScoreItem ? activeScoreItem.score : 0;
 
   return (
     <div className="min-h-screen bg-neutral-50 pb-20">
@@ -123,7 +237,7 @@ export default function ReportPage({ params }: ReportPageProps) {
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-lg font-bold text-gray-900">活动总览</h2>
             <div className="text-right">
-              <div className="text-2xl font-bold text-amber-600">{MOCK_AGGREGATE_DATA.totalParticipants}</div>
+              <div className="text-2xl font-bold text-amber-600">{reportData.totalParticipants}</div>
               <div className="text-xs text-gray-500">参与人数</div>
             </div>
           </div>
@@ -132,7 +246,7 @@ export default function ReportPage({ params }: ReportPageProps) {
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={rankingData} layout="vertical" margin={{ top: 5, right: 30, left: 40, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" horizontal={false} />
-                <XAxis type="number" domain={[80, 90]} hide />
+                <XAxis type="number" domain={isVotingMode ? [0, 'dataMax'] : [80, 'dataMax']} hide />
                 <YAxis dataKey="name" type="category" width={80} tick={{ fontSize: 12 }} />
                 <Tooltip cursor={{ fill: '#f3f4f6' }} contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
                 <Bar dataKey="score" fill="#d97706" radius={[0, 4, 4, 0]} barSize={20} label={{ position: 'right', fill: '#666', fontSize: 12 }} />
@@ -176,7 +290,7 @@ export default function ReportPage({ params }: ReportPageProps) {
                 <div className="text-right bg-amber-50 px-3 py-1 rounded-lg">
                   <span className="text-xs text-amber-600 font-medium uppercase block">{isVotingMode ? '总喜好度' : '平均分'}</span>
                   <span className="text-xl font-bold text-amber-700">
-                    {MOCK_AGGREGATE_DATA.averageScores[activeSampleIndex % 4].score}
+                    {activeScore}
                   </span>
                 </div>
               </div>
@@ -186,7 +300,7 @@ export default function ReportPage({ params }: ReportPageProps) {
                   <div className="flex items-center justify-center h-full bg-gray-50 rounded-xl p-8 text-center">
                     <div>
                       <div className="text-4xl font-bold text-amber-500 mb-2">
-                        {MOCK_AGGREGATE_DATA.averageScores[activeSampleIndex % 4].score} <span className="text-lg text-gray-500 font-normal">分</span>
+                        {activeScore} <span className="text-lg text-gray-500 font-normal">{isVotingMode ? '星' : '分'}</span>
                       </div>
                       <p className="text-gray-500 text-sm">综合了所有参与者的投票得分</p>
                       <div className="mt-4 flex justify-center gap-1">
@@ -223,31 +337,36 @@ export default function ReportPage({ params }: ReportPageProps) {
                 {/* Flavor Cloud & Stats */}
                 <div className="space-y-6">
                   <div>
-                    <h4 className="text-sm font-medium text-gray-700 mb-3">风味印象</h4>
+                    <h4 className="text-sm font-medium text-gray-700 mb-3">{isVotingMode ? '热门评价' : '风味印象'}</h4>
                     <div className="flex flex-wrap gap-2">
-                      {(MOCK_AGGREGATE_DATA.topFlavors[String.fromCharCode(65 + (activeSampleIndex % 4))] || []).map((flavor: string, i: number) => (
-                        <span 
-                          key={i} 
-                          className="px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-sm"
-                          style={{ fontSize: i === 0 ? '1.1rem' : '0.9rem', fontWeight: i === 0 ? 'bold' : 'normal' }}
-                        >
-                          {flavor}
-                        </span>
-                      ))}
-                      {(!MOCK_AGGREGATE_DATA.topFlavors[String.fromCharCode(65 + (activeSampleIndex % 4))]) && <span className="text-gray-400 text-sm">暂无数据</span>}
+                      {reportData.topFlavors[activeSample.name] && reportData.topFlavors[activeSample.name].length > 0 ? (
+                        reportData.topFlavors[activeSample.name].map((flavor: string, i: number) => (
+                          <span 
+                            key={i} 
+                            className="px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-sm"
+                            style={{ fontSize: i === 0 ? '1.1rem' : '0.9rem', fontWeight: i === 0 ? 'bold' : 'normal' }}
+                          >
+                            {flavor}
+                          </span>
+                        ))
+                      ) : (
+                        <span className="text-gray-400 text-sm">暂无数据</span>
+                      )}
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="p-3 bg-gray-50 rounded-lg">
-                      <div className="text-xs text-gray-500">最高分</div>
-                      <div className="text-lg font-semibold text-gray-900">89.5</div>
+                  {!isVotingMode && reportData.stats[activeSample.name] && (
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="p-3 bg-gray-50 rounded-lg">
+                        <div className="text-xs text-gray-500">最高分</div>
+                        <div className="text-lg font-semibold text-gray-900">{reportData.stats[activeSample.name].high}</div>
+                      </div>
+                      <div className="p-3 bg-gray-50 rounded-lg">
+                        <div className="text-xs text-gray-500">最低分</div>
+                        <div className="text-lg font-semibold text-gray-900">{reportData.stats[activeSample.name].low}</div>
+                      </div>
                     </div>
-                    <div className="p-3 bg-gray-50 rounded-lg">
-                      <div className="text-xs text-gray-500">最低分</div>
-                      <div className="text-lg font-semibold text-gray-900">82.0</div>
-                    </div>
-                  </div>
+                  )}
                 </div>
               </div>
             </div>
