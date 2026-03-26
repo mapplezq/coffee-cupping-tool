@@ -115,8 +115,10 @@ export default function ReportPage({ params }: ReportPageProps) {
       if (isVoting) {
         // Sum of "喜好度" or count of "是否喜欢"
         const totalStars = sRecords.reduce((sum, r) => {
-          const score = Number(r['喜好度']);
-          if (!isNaN(score)) return sum + score;
+          if (r['喜好度'] != null && r['喜好度'] !== '') {
+            const score = Number(r['喜好度']);
+            if (!isNaN(score)) return sum + score;
+          }
           return sum + (r['是否喜欢'] === '是' ? 3 : 0);
         }, 0);
         
@@ -199,6 +201,7 @@ export default function ReportPage({ params }: ReportPageProps) {
       name: session.blindMode ? (session.blindLabelType === 'number' ? `${index + 1}` : String.fromCharCode(65 + index)) : sName,
       score: scoreItem ? scoreItem.score : 0,
       fill: '#d97706',
+      originalName: sName
     };
   }).sort((a: any, b: any) => b.score - a.score);
 
@@ -247,7 +250,16 @@ export default function ReportPage({ params }: ReportPageProps) {
               <BarChart data={rankingData} layout="vertical" margin={{ top: 5, right: 30, left: 40, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" horizontal={false} />
                 <XAxis type="number" domain={isVotingMode ? [0, 'dataMax'] : [80, 'dataMax']} hide />
-                <YAxis dataKey="name" type="category" width={80} tick={{ fontSize: 12 }} />
+                <YAxis 
+                  dataKey="name" 
+                  type="category" 
+                  width={80} 
+                  tick={{ fontSize: 12 }} 
+                  tickFormatter={(value, index) => {
+                    if (session.blindMode) return value;
+                    return value.length > 5 ? value.substring(0, 5) + '...' : value;
+                  }}
+                />
                 <Tooltip cursor={{ fill: '#f3f4f6' }} contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
                 <Bar dataKey="score" fill="#d97706" radius={[0, 4, 4, 0]} barSize={20} label={{ position: 'right', fill: '#666', fontSize: 12 }} />
               </BarChart>
@@ -261,7 +273,10 @@ export default function ReportPage({ params }: ReportPageProps) {
           
           {/* Sample Selector Tabs */}
           <div className="flex overflow-x-auto gap-2 pb-2 px-2 no-scrollbar">
-            {samples.map((s: any, index: number) => (
+            {rankingData.map((item: any, index: number) => {
+              const s = samples.find((x:any) => x.name === item.originalName);
+              if (!s) return null;
+              return (
               <button
                 key={s.id}
                 onClick={() => setActiveSampleId(s.id)}
@@ -271,9 +286,9 @@ export default function ReportPage({ params }: ReportPageProps) {
                     : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
                 }`}
               >
-                {session.blindMode ? (session.blindLabelType === 'number' ? `${index + 1}` : String.fromCharCode(65 + index)) : s.name}
+                {item.name}
               </button>
-            ))}
+            )})}
           </div>
 
           {activeSample && (
@@ -281,7 +296,7 @@ export default function ReportPage({ params }: ReportPageProps) {
               <div className="flex justify-between items-start mb-6">
                 <div>
                   <h3 className="text-xl font-bold text-gray-900">
-                    {session.blindMode ? (session.blindLabelType === 'number' ? `${activeSampleIndex + 1}` : String.fromCharCode(65 + activeSampleIndex)) : activeSample.name}
+                    {rankingData.find((x:any) => x.originalName === activeSample.name)?.name || activeSample.name}
                   </h3>
                   <p className="text-sm text-gray-500 mt-1">
                     {!session.blindMode && `${activeSample.origin} · ${activeSample.process}`}

@@ -452,7 +452,7 @@ export default function SessionDetailPage() {
                 <div className="p-4 flex items-start gap-4">
                   {/* Label */}
                   <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg shrink-0 mt-1 ${displayScore > 0 ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-500'}`}>
-                    {index + 1}
+                    {session.blindMode ? (session.blindLabelType === 'letter' ? String.fromCharCode(65 + index) : index + 1) : index + 1}
                   </div>
                   
                   {/* Info */}
@@ -487,6 +487,9 @@ export default function SessionDetailPage() {
                       placeholder="写点评价... (选填)"
                       className="w-full p-3 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 focus:bg-white transition-all resize-none"
                       rows={2}
+                      onCompositionStart={(e) => e.stopPropagation()}
+                      onCompositionUpdate={(e) => e.stopPropagation()}
+                      onCompositionEnd={(e) => e.stopPropagation()}
                     />
                 </div>
               </div>
