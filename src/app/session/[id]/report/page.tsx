@@ -3,7 +3,7 @@
 import { useEffect, useState, use } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSessions } from '@/lib/context';
-import { ArrowLeft, Download, Share2 } from 'lucide-react';
+import { ArrowLeft, Download, Share2, Star } from 'lucide-react';
 import Link from 'next/link';
 import {
   Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
@@ -189,7 +189,7 @@ export default function ReportPage({ params }: ReportPageProps) {
           if (Array.isArray(isFav) && isFav.length > 0) {
              isFav = isFav[0].text;
           }
-          return sum + (isFav === '是' ? 3 : 0);
+          return sum + (isFav === '是' ? 5 : 0);
         }, 0);
         
         averageScores.push({
@@ -384,11 +384,13 @@ export default function ReportPage({ params }: ReportPageProps) {
                     )}
                   </div>
                   {session.blindMode ? (
-                    <div className="mt-2 p-2 bg-amber-50 rounded border border-amber-100/50">
-                      <span className="text-gray-500 text-xs block mb-1">真实样品信息</span>
-                      <span className="font-medium text-gray-800 text-sm">{activeSample.name}</span>
-                      <span className="text-xs text-gray-500 ml-2">{activeSample.origin} · {activeSample.process}</span>
-                    </div>
+                     !session.isGuest ? (
+                       <div className="mt-2 p-2 bg-amber-50 rounded border border-amber-100/50">
+                         <span className="text-gray-500 text-xs block mb-1">真实样品信息</span>
+                         <span className="font-medium text-gray-800 text-sm">{activeSample.name}</span>
+                         <span className="text-xs text-gray-500 ml-2">{activeSample.origin} · {activeSample.process}</span>
+                       </div>
+                     ) : null
                   ) : (
                     <p className="text-sm text-gray-500 mt-1">
                       {`${activeSample.origin} · ${activeSample.process}`}
@@ -412,15 +414,14 @@ export default function ReportPage({ params }: ReportPageProps) {
                       </div>
                       <p className="text-gray-500 text-sm">综合了所有参与者的投票得分</p>
                       <div className="mt-4 flex justify-center gap-1">
-                        {/* Dynamic representation of stars based on average score */}
-                        {/* If max possible is 3 stars per person, maybe we just show stars out of 3? */}
-                        {/* Or we can just calculate average stars out of 3 based on total score / participants */}
-                        {[1, 2, 3].map((star) => {
+                        {[1, 2, 3, 4, 5].map((star) => {
                           const avgScore = reportData.totalParticipants > 0 ? activeScore / reportData.totalParticipants : 0;
+                          const filled = star <= Math.round(avgScore);
                           return (
-                           <svg key={star} className={`w-8 h-8 ${star <= Math.round(avgScore) ? 'text-red-500' : 'text-gray-200'}`} fill="currentColor" viewBox="0 0 24 24">
-                             <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
-                           </svg>
+                            <Star
+                              key={star}
+                              className={`w-7 h-7 ${filled ? 'text-red-500 fill-current' : 'text-gray-200'}`}
+                            />
                           );
                         })}
                       </div>

@@ -65,7 +65,7 @@ export interface CuppingScore {
   defects: Defect[]
   notes: string
   isFavorite?: boolean // Legacy: For boolean voting mode
-  voteScore?: number // New: 1, 2, or 3 stars/hearts for voting mode
+  voteScore?: number // New: 1-5 stars for voting mode
   createdAt: string
 }
 

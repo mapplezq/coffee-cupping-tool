@@ -77,7 +77,7 @@ export async function POST(request: Request) {
             
             // Handle both new voteScore and legacy isFavorite
             // Fix: In voting, the client stores it in voteScore. If it's undefined, it's 0.
-            const numericScore = typeof score?.voteScore === 'number' ? score.voteScore : (score?.isFavorite ? 3 : 0);
+            const numericScore = typeof score?.voteScore === 'number' ? score.voteScore : (score?.isFavorite ? 5 : 0);
             
             return {
                 "杯测名称": session.name,

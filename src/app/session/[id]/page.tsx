@@ -6,7 +6,7 @@ import { useSessions } from '@/lib/context';
 import { SessionWithSamples, CuppingScore } from '@/lib/types';
 import ScoringForm from '@/components/ScoringForm';
 import SettingsModal from '@/components/SettingsModal';
-import { ArrowLeft, RefreshCw, CheckCircle, Settings, Share2, X, Eye, EyeOff, ChevronLeft, ChevronRight, Copy, BarChart3, ListChecks, Heart, MessageSquare } from 'lucide-react';
+import { ArrowLeft, RefreshCw, CheckCircle, Settings, Share2, X, Eye, EyeOff, ChevronLeft, ChevronRight, Copy, BarChart3, ListChecks, Star, MessageSquare } from 'lucide-react';
 import Link from 'next/link';
 import { cn, formatDate } from '@/lib/utils';
 import { v4 as uuidv4 } from 'uuid';
@@ -31,6 +31,8 @@ export default function SessionDetailPage() {
   const [cupperNameInput, setCupperNameInput] = useState('');
 
   const [expandedNotes, setExpandedNotes] = useState<string[]>([]);
+  const [noteDrafts, setNoteDrafts] = useState<Record<string, string>>({});
+  const [isComposing, setIsComposing] = useState(false);
 
   const toggleNote = (sampleId: string) => {
     setExpandedNotes(prev => 
@@ -159,6 +161,7 @@ export default function SessionDetailPage() {
 
       await updateSession(updatedSession);
       setSession(updatedSession);
+      setNoteDrafts(prev => ({ ...prev, [sample.id]: note }));
     } catch (error) {
       console.error("Failed to update note:", error);
     }
@@ -431,9 +434,9 @@ export default function SessionDetailPage() {
             const voteScore = sample.score?.voteScore || 0;
             // Backwards compatibility for old records that only have isFavorite
             const isFavorite = !!sample.score?.isFavorite;
-            const displayScore = voteScore > 0 ? voteScore : (isFavorite ? 3 : 0); // Default old favorites to 3 stars
+            const displayScore = voteScore > 0 ? voteScore : (isFavorite ? 5 : 0); // Default old favorites to 5 stars
             
-            const note = sample.score?.notes || '';
+            const note = noteDrafts[sample.id] ?? (sample.score?.notes || '');
             const isNoteExpanded = expandedNotes.includes(sample.id);
 
             return (
@@ -454,15 +457,15 @@ export default function SessionDetailPage() {
                     )}
                   </div>
 
-                  {/* Actions - 3 Hearts */}
+                  {/* Actions */}
                   <div className="flex items-center gap-1 shrink-0">
-                    {[1, 2, 3].map((star) => (
+                    {[1, 2, 3, 4, 5].map((star) => (
                       <button 
                         key={star}
                         onClick={(e) => { e.stopPropagation(); handleVote(sample, star); }}
                         className={`p-1.5 rounded-full transition-all active:scale-90 ${star <= displayScore ? 'text-red-500 hover:bg-red-50' : 'text-gray-300 hover:bg-gray-100'}`}
                       >
-                        <Heart className={`w-6 h-6 sm:w-7 sm:h-7 ${star <= displayScore ? 'fill-current' : ''}`} />
+                        <Star className={`w-6 h-6 sm:w-7 sm:h-7 ${star <= displayScore ? 'fill-current' : ''}`} />
                       </button>
                     ))}
                   </div>
@@ -470,13 +473,26 @@ export default function SessionDetailPage() {
 
                 {/* Note Input - Always visible in voting mode */}
                 <div className="px-4 pb-4">
-                    <textarea
-                      defaultValue={note}
-                      onBlur={(e) => handleVoteNoteChange(sample, e.target.value)}
-                      placeholder="写点评价... (选填)"
-                      className="w-full p-3 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 focus:bg-white transition-all resize-none"
-                      rows={2}
-                    />
+                  <textarea
+                    value={note}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      setNoteDrafts(prev => ({ ...prev, [sample.id]: value }));
+                      if (!isComposing) {
+                        handleVoteNoteChange(sample, value);
+                      }
+                    }}
+                    onCompositionStart={() => setIsComposing(true)}
+                    onCompositionEnd={(e) => {
+                      setIsComposing(false);
+                      const value = (e.target as HTMLTextAreaElement).value;
+                      setNoteDrafts(prev => ({ ...prev, [sample.id]: value }));
+                      handleVoteNoteChange(sample, value);
+                    }}
+                    placeholder="写点评价... (选填)"
+                    className="w-full p-3 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 focus:bg-white transition-all resize-none"
+                    rows={2}
+                  />
                 </div>
               </div>
             );
@@ -541,13 +557,15 @@ export default function SessionDetailPage() {
                         <div className="shrink-0 text-right flex gap-1">
                           {session.template === 'voting' ? (
                             sample.score?.voteScore ? (
-                               // Render the number of hearts based on voteScore
+                           // Render the number of stars based on voteScore
                                [...Array(sample.score.voteScore)].map((_, i) => (
-                                 <Heart key={i} className="w-5 h-5 text-red-500 fill-current" />
+                             <Star key={i} className="w-5 h-5 text-red-500 fill-current" />
                                ))
                             ) : sample.score?.isFavorite ? (
                                // Fallback for old records
-                               <Heart className="w-5 h-5 text-red-500 fill-current" />
+                           [...Array(5)].map((_, i) => (
+                             <Star key={i} className="w-5 h-5 text-red-500 fill-current" />
+                           ))
                             ) : null
                           ) : (
                             sample.score ? (
@@ -677,13 +695,15 @@ export default function SessionDetailPage() {
                       <div className="shrink-0 text-right flex gap-1">
                         {session.template === 'voting' ? (
                           sample.score?.voteScore ? (
-                             // Render the number of hearts based on voteScore
+                             // Render the number of stars based on voteScore
                              [...Array(sample.score.voteScore)].map((_, i) => (
-                               <Heart key={i} className="w-5 h-5 text-red-500 fill-current" />
+                               <Star key={i} className="w-5 h-5 text-red-500 fill-current" />
                              ))
                           ) : sample.score?.isFavorite ? (
                              // Fallback for old records
-                             <Heart className="w-5 h-5 text-red-500 fill-current" />
+                             [...Array(5)].map((_, i) => (
+                               <Star key={i} className="w-5 h-5 text-red-500 fill-current" />
+                             ))
                           ) : null
                         ) : (
                           sample.score ? (
@@ -998,13 +1018,15 @@ export default function SessionDetailPage() {
                         <div className="shrink-0 text-right flex gap-1">
                           {session.template === 'voting' ? (
                             sample.score?.voteScore ? (
-                               // Render the number of hearts based on voteScore
+                             // Render the number of stars based on voteScore
                                [...Array(sample.score.voteScore)].map((_, i) => (
-                                 <Heart key={i} className="w-5 h-5 text-red-500 fill-current" />
+                               <Star key={i} className="w-5 h-5 text-red-500 fill-current" />
                                ))
                             ) : sample.score?.isFavorite ? (
                                // Fallback for old records
-                               <Heart className="w-5 h-5 text-red-500 fill-current" />
+                             [...Array(5)].map((_, i) => (
+                               <Star key={i} className="w-5 h-5 text-red-500 fill-current" />
+                             ))
                             ) : null
                           ) : (
                             sample.score ? (
