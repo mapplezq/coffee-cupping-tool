@@ -79,55 +79,109 @@ export default function ReportPage({ params }: ReportPageProps) {
     
     // Total participants (Deduplicate by Participant Name)
     const participantField = isVoting ? '投票人' : '杯测人';
-    const participants = new Set();
-    
-    // Group records by submitter to calculate exact participant count even if name is missing
-    const submitterGroups: Record<string, any[]> = {};
-    
-    records.forEach(r => {
-      // In Feishu, People fields might come back as an array of objects or a string.
-      // E.g. [{"name": "Mapple", ...}] or just "Mapple", or even [{"text":"Mapple ","type":"text"}]
-      let name = r[participantField];
-      if (Array.isArray(name) && name.length > 0) {
-        name = name[0].name || name[0].text || name[0];
+    const toText = (value: any) => {
+      if (Array.isArray(value) && value.length > 0) {
+        const v0 = value[0];
+        if (typeof v0 === 'string') return v0.trim();
+        if (typeof v0 === 'object' && v0 !== null) return String(v0.text || v0.name || '').trim();
+        return String(v0).trim();
       }
-      if (typeof name === 'object' && name !== null) {
-         name = name.name || name.text;
-      }
-      // Ensure it's a string and trim whitespace
-      name = typeof name === 'string' ? name.trim() : '';
+      if (typeof value === 'object' && value !== null) return String(value.text || value.name || '').trim();
+      if (typeof value === 'string') return value.trim();
+      if (typeof value === 'number') return String(value);
+      return '';
+    };
 
-      // Try to group by name first, if no name, group by timestamp to assume it's one submission session
-      const groupKey = (name && name !== '匿名') ? name : `anon_${r['投票时间'] || r['创建时间'] || Math.random()}`;
-      
-      if (!submitterGroups[groupKey]) {
-        submitterGroups[groupKey] = [];
+    const toNumber = (value: any) => {
+      if (Array.isArray(value) && value.length > 0) {
+        const v0 = value[0];
+        if (typeof v0 === 'number') return v0;
+        if (typeof v0 === 'string') {
+          const n = Number(v0);
+          return Number.isNaN(n) ? null : n;
+        }
+        if (typeof v0 === 'object' && v0 !== null) {
+          const n = Number(v0.text ?? v0.name);
+          return Number.isNaN(n) ? null : n;
+        }
+        const n = Number(v0);
+        return Number.isNaN(n) ? null : n;
       }
-      submitterGroups[groupKey].push(r);
-      
-      if (name && name !== '匿名') {
-        participants.add(name);
+      if (typeof value === 'number') return value;
+      if (typeof value === 'string') {
+        const n = Number(value);
+        return Number.isNaN(n) ? null : n;
       }
-    });
-    
-    // The true number of participants is the number of distinct groups we found
-    let totalParticipants = Object.keys(submitterGroups).length;
+      if (typeof value === 'object' && value !== null) {
+        const n = Number(value.text ?? value.name);
+        return Number.isNaN(n) ? null : n;
+      }
+      return null;
+    };
+
+    const getTime = (r: any) => {
+      const t = r['投票时间'] ?? r['创建时间'];
+      const n = toNumber(t);
+      return typeof n === 'number' ? n : 0;
+    };
+
+    const getVoteScore = (r: any) => {
+      for (const key in r) {
+        if (key.includes('喜好度') || key.includes('评分')) {
+          const n = toNumber(r[key]);
+          if (typeof n === 'number') return n;
+          break;
+        }
+      }
+      const isFav = toText(r['是否喜欢']);
+      return isFav === '是' ? 5 : 0;
+    };
+
+    const normalizedRecords = isVoting
+      ? (() => {
+          const latestByVoterSample = new Map<string, { sampleName: string; voterKey: string; time: number; stars: number; note: string }>();
+          for (const r of records) {
+            const sampleName = toText(r['样品名称']);
+            if (!sampleName) continue;
+            const name = toText(r[participantField]);
+            const time = getTime(r);
+            const voterKey = name && name !== '匿名' ? name : `anon_${time}`;
+            const stars = getVoteScore(r);
+            const note = toText(r['评语']);
+            const key = `${voterKey}|${sampleName}`;
+            const existing = latestByVoterSample.get(key);
+            if (!existing || time >= existing.time) {
+              latestByVoterSample.set(key, { sampleName, voterKey, time, stars, note });
+            }
+          }
+          return Array.from(latestByVoterSample.values());
+        })()
+      : records;
+
+    const totalParticipants = isVoting
+      ? new Set((normalizedRecords as any[]).map(r => r.voterKey)).size
+      : (() => {
+          const participants = new Set(records.map(r => toText(r[participantField])).filter(Boolean));
+          return participants.size;
+        })();
 
     // Group by sample name
     const sampleGroups: Record<string, any[]> = {};
-    records.forEach(r => {
-      // Handle array format for Sample Name
-      let sName = r['样品名称'];
-      if (Array.isArray(sName) && sName.length > 0) {
-        sName = sName[0].text || sName[0].name || sName[0];
-      } else if (typeof sName === 'object' && sName !== null) {
-        sName = sName.text || sName.name;
-      }
-      
-      if (!sName) return;
-      if (!sampleGroups[sName]) sampleGroups[sName] = [];
-      sampleGroups[sName].push(r);
-    });
+    if (isVoting) {
+      (normalizedRecords as any[]).forEach(r => {
+        const sName = r.sampleName;
+        if (!sName) return;
+        if (!sampleGroups[sName]) sampleGroups[sName] = [];
+        sampleGroups[sName].push(r);
+      });
+    } else {
+      records.forEach(r => {
+        const sName = toText(r['样品名称']);
+        if (!sName) return;
+        if (!sampleGroups[sName]) sampleGroups[sName] = [];
+        sampleGroups[sName].push(r);
+      });
+    }
 
     const averageScores: any[] = [];
     const radarData: Record<string, any[]> = {};
@@ -141,13 +195,8 @@ export default function ReportPage({ params }: ReportPageProps) {
       // Extract flavors/notes
       const noteField = isVoting ? '评语' : '风味笔记';
       const notes = sRecords.map(r => {
-        let note = r[noteField];
-        if (Array.isArray(note) && note.length > 0) {
-          note = note[0].text || note[0].name || note[0];
-        } else if (typeof note === 'object' && note !== null) {
-          note = note.text || note.name;
-        }
-        return note;
+        if (isVoting) return r.note;
+        return toText(r[noteField]);
       }).filter(Boolean);
       // Simple word extraction for flavors (split by common punctuation)
       const words = notes.flatMap(n => n.split(/[,，、。\s]+/)).filter(w => w.length > 1 && w !== '【展会活动】');
@@ -161,35 +210,7 @@ export default function ReportPage({ params }: ReportPageProps) {
       if (isVoting) {
         // Sum of "喜好度" or count of "是否喜欢"
         const totalStars = sRecords.reduce((sum, r) => {
-          // In Feishu, the exact key might literally be "# 喜好度" or "喜好度" depending on how API returns it.
-          // Let's aggressively search for ANY key containing "喜好度" or "评分".
-          let starValue;
-          for (const key in r) {
-             if (key.includes('喜好度') || key.includes('评分')) {
-                 starValue = r[key];
-                 break;
-             }
-          }
-          
-          if (starValue !== undefined && starValue !== null && starValue !== '') {
-            // Check if it's an array from Feishu (e.g. [{"text":"1","type":"text"}])
-            if (Array.isArray(starValue) && starValue.length > 0) {
-              starValue = starValue[0].text || starValue[0].name || starValue[0];
-            } else if (typeof starValue === 'object' && starValue !== null) {
-              starValue = starValue.text || starValue.name;
-            }
-            
-            const score = Number(starValue);
-            if (!isNaN(score)) {
-              return sum + score;
-            }
-          }
-          // Fallback to legacy field if new numeric field is missing or invalid
-          let isFav = r['是否喜欢'];
-          if (Array.isArray(isFav) && isFav.length > 0) {
-             isFav = isFav[0].text;
-          }
-          return sum + (isFav === '是' ? 5 : 0);
+          return sum + (typeof r.stars === 'number' ? r.stars : 0);
         }, 0);
         
         averageScores.push({
