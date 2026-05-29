@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { addRecordToBitable } from '@/lib/feishu';
+import { addRecordToBitable, batchDeleteRecordsFromBitable, batchUpdateRecordsToBitable, searchRecordItemsFromBitable } from '@/lib/feishu';
 import { SessionWithSamples } from '@/lib/types';
 import { FEISHU_CONFIG } from '@/lib/feishu-config';
 
@@ -69,32 +69,153 @@ export async function POST(request: Request) {
 
     let records;
     if (session.template === 'voting') {
+        const resolvedCupperName =
+          clientConfig?.cupperName ||
+          (session as SessionWithSamples).samples.find(s => s.score?.cupperName)?.score?.cupperName ||
+          session?.cupperName ||
+          "匿名";
+
+        const now = new Date().getTime();
+
         records = (session as SessionWithSamples).samples.map(sample => {
-            const score = sample.score;
-            // Create a default valid score object if none exists so that cupperName is always present
-            // We use the top-level cupperName from config or session.
-            const resolvedCupperName = clientConfig?.cupperName || score?.cupperName || session?.cupperName || "匿名";
-            
-            // Handle both new voteScore and legacy isFavorite
-            // Fix: In voting, the client stores it in voteScore. If it's undefined, it's 0.
-            const numericScore = typeof score?.voteScore === 'number' ? score.voteScore : (score?.isFavorite ? 5 : 0);
-            
-            return {
-                "杯测名称": session.name,
-                "样品名称": sample.name,
-                "投票人": resolvedCupperName,
-                // DO NOT provide multiple keys. Bitable will reject the request if a key doesn't exist in the schema.
-                // Since the test GET returned exactly "喜好度", we must only use that.
-                "喜好度": Number(numericScore), 
-                "是否喜欢": numericScore > 0 ? "是" : "", // Legacy field
-                "评语": score?.notes || "",
-                "投票时间": new Date().getTime(), // Or score?.createdAt if available
-            };
+          const score = sample.score;
+          const numericScore = typeof score?.voteScore === 'number' ? score.voteScore : (score?.isFavorite ? 5 : 0);
+
+          return {
+            "杯测名称": session.name,
+            "样品名称": sample.name,
+            "投票人": resolvedCupperName,
+            "喜好度": Number(numericScore),
+            "是否喜欢": numericScore > 0 ? "是" : "",
+            "评语": score?.notes || "",
+            "投票时间": now,
+          };
         });
-        
-        // Remove empty records where user didn't vote and didn't leave a note
-        // User request: Don't remove empty records, submit 0 scores as well to calculate proper totals/averages
-        // BUT, if we submit 5 records for 1 user, they are not "empty", they are just 0 score. That is correct.
+
+        // Overwrite behavior:
+        // - If user is anonymous, we cannot safely overwrite without risking collisions. Fall back to append.
+        // - Otherwise, upsert per (杯测名称 + 投票人 + 样品名称), and delete any older duplicates.
+        if (resolvedCupperName !== "匿名") {
+          const toText = (value: any) => {
+            if (Array.isArray(value) && value.length > 0) {
+              const v0 = value[0];
+              if (typeof v0 === 'string') return v0.trim();
+              if (typeof v0 === 'object' && v0 !== null) return String(v0.text || v0.name || '').trim();
+              return String(v0).trim();
+            }
+            if (typeof value === 'object' && value !== null) return String(value.text || value.name || '').trim();
+            if (typeof value === 'string') return value.trim();
+            if (typeof value === 'number') return String(value);
+            return '';
+          };
+
+          const toNumber = (value: any) => {
+            if (Array.isArray(value) && value.length > 0) {
+              const v0 = value[0];
+              if (typeof v0 === 'number') return v0;
+              if (typeof v0 === 'string') {
+                const n = Number(v0);
+                return Number.isNaN(n) ? null : n;
+              }
+              if (typeof v0 === 'object' && v0 !== null) {
+                const n = Number(v0.text ?? v0.name);
+                return Number.isNaN(n) ? null : n;
+              }
+              const n = Number(v0);
+              return Number.isNaN(n) ? null : n;
+            }
+            if (typeof value === 'number') return value;
+            if (typeof value === 'string') {
+              const n = Number(value);
+              return Number.isNaN(n) ? null : n;
+            }
+            if (typeof value === 'object' && value !== null) {
+              const n = Number(value.text ?? value.name);
+              return Number.isNaN(n) ? null : n;
+            }
+            return null;
+          };
+
+          const baseFilter = {
+            conjunction: "and",
+            conditions: [
+              { field_name: "杯测名称", operator: "is", value: [session.name] },
+              { field_name: "投票人", operator: "is", value: [resolvedCupperName] },
+            ],
+          };
+
+          let existingItems: any[] = [];
+          try {
+            existingItems = await searchRecordItemsFromBitable(appToken, tableId, baseFilter, appId, appSecret);
+          } catch (_) {
+            const fallbackFilter = {
+              conjunction: "and",
+              conditions: [
+                { field_name: "杯测名称", operator: "is", value: [session.name] },
+                { field_name: "投票人", operator: "contains", value: [resolvedCupperName] },
+              ],
+            };
+            existingItems = await searchRecordItemsFromBitable(appToken, tableId, fallbackFilter, appId, appSecret);
+          }
+
+          const bySample: Record<string, { keep: { record_id: string; time: number } | null; remove: string[] }> = {};
+          existingItems.forEach(item => {
+            const fields = item.fields || {};
+            const sName = toText(fields["样品名称"]);
+            if (!sName) return;
+            const t = toNumber(fields["投票时间"]) ?? 0;
+            if (!bySample[sName]) bySample[sName] = { keep: null, remove: [] };
+            const current = bySample[sName].keep;
+            if (!current || t >= current.time) {
+              if (current) bySample[sName].remove.push(current.record_id);
+              bySample[sName].keep = { record_id: item.record_id, time: t };
+            } else {
+              bySample[sName].remove.push(item.record_id);
+            }
+          });
+
+          const updateRecords: { record_id: string; fields: any }[] = [];
+          const createFields: any[] = [];
+
+          const currentSampleNames = new Set((session as SessionWithSamples).samples.map(s => s.name));
+
+          records.forEach(fields => {
+            const sName = fields["样品名称"];
+            const keep = bySample[sName]?.keep;
+            if (keep) {
+              updateRecords.push({ record_id: keep.record_id, fields });
+            } else {
+              createFields.push(fields);
+            }
+          });
+
+          const removeIds: string[] = [];
+          Object.keys(bySample).forEach(sName => {
+            removeIds.push(...bySample[sName].remove);
+            if (!currentSampleNames.has(sName) && bySample[sName].keep?.record_id) {
+              removeIds.push(bySample[sName].keep.record_id);
+            }
+          });
+
+          if (updateRecords.length > 0) {
+            await batchUpdateRecordsToBitable(appToken, tableId, updateRecords, appId, appSecret);
+          }
+          if (createFields.length > 0) {
+            await addRecordToBitable(appToken, tableId, createFields, appId, appSecret);
+          }
+          if (removeIds.length > 0) {
+            await batchDeleteRecordsFromBitable(appToken, tableId, Array.from(new Set(removeIds)), appId, appSecret);
+          }
+
+          return NextResponse.json({
+            success: true,
+            data: {
+              updated: updateRecords.length,
+              created: createFields.length,
+              deleted: Array.from(new Set(removeIds)).length,
+            },
+          });
+        }
     } else {
         // Standard Scoring Sync
         records = (session as SessionWithSamples).samples.map(sample => {

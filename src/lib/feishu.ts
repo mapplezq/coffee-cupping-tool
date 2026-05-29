@@ -60,6 +60,129 @@ export async function addRecordToBitable(appToken: string, tableId: string, reco
   return results;
 }
 
+export async function batchUpdateRecordsToBitable(
+  appToken: string,
+  tableId: string,
+  records: { record_id: string; fields: any }[],
+  appId?: string,
+  appSecret?: string
+) {
+  const token = await getTenantAccessToken(appId, appSecret);
+
+  const BATCH_SIZE = 100;
+  const results = [];
+
+  for (let i = 0; i < records.length; i += BATCH_SIZE) {
+    const batch = records.slice(i, i + BATCH_SIZE);
+
+    const response = await fetch(
+      `https://open.feishu.cn/open-apis/bitable/v1/apps/${appToken}/tables/${tableId}/records/batch_update`,
+      {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${token}`,
+          "Content-Type": "application/json; charset=utf-8",
+        },
+        body: JSON.stringify({
+          records: batch,
+        }),
+      }
+    );
+
+    const data = await response.json();
+    if (data.code !== 0) {
+      throw new Error(`Failed to update records: ${data.msg}`);
+    }
+    results.push(data.data);
+  }
+
+  return results;
+}
+
+export async function batchDeleteRecordsFromBitable(
+  appToken: string,
+  tableId: string,
+  recordIds: string[],
+  appId?: string,
+  appSecret?: string
+) {
+  const token = await getTenantAccessToken(appId, appSecret);
+
+  const BATCH_SIZE = 100;
+  const results = [];
+
+  for (let i = 0; i < recordIds.length; i += BATCH_SIZE) {
+    const batch = recordIds.slice(i, i + BATCH_SIZE);
+
+    const response = await fetch(
+      `https://open.feishu.cn/open-apis/bitable/v1/apps/${appToken}/tables/${tableId}/records/batch_delete`,
+      {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${token}`,
+          "Content-Type": "application/json; charset=utf-8",
+        },
+        body: JSON.stringify({
+          records: batch,
+        }),
+      }
+    );
+
+    const data = await response.json();
+    if (data.code !== 0) {
+      throw new Error(`Failed to delete records: ${data.msg}`);
+    }
+    results.push(data.data);
+  }
+
+  return results;
+}
+
+export async function searchRecordItemsFromBitable(
+  appToken: string,
+  tableId: string,
+  filter: any,
+  appId?: string,
+  appSecret?: string
+) {
+  const token = await getTenantAccessToken(appId, appSecret);
+
+  let items: any[] = [];
+  let pageToken = "";
+  let hasMore = true;
+
+  while (hasMore) {
+    const response = await fetch(
+      `https://open.feishu.cn/open-apis/bitable/v1/apps/${appToken}/tables/${tableId}/records/search?page_size=100${pageToken ? `&page_token=${pageToken}` : ""}`,
+      {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${token}`,
+          "Content-Type": "application/json; charset=utf-8",
+        },
+        body: JSON.stringify({
+          filter,
+          automatic_fields: true,
+        }),
+      }
+    );
+
+    const data = await response.json();
+    if (data.code !== 0) {
+      throw new Error(`Failed to search records: ${data.msg}`);
+    }
+
+    if (data.data && data.data.items) {
+      items = items.concat(data.data.items);
+    }
+
+    hasMore = data.data.has_more;
+    pageToken = data.data.page_token;
+  }
+
+  return items;
+}
+
 export async function getRecordsFromBitable(appToken: string, tableId: string, sessionName: string, appId?: string, appSecret?: string) {
   const token = await getTenantAccessToken(appId, appSecret);
   
