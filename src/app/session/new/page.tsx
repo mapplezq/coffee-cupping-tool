@@ -26,13 +26,14 @@ const sessionSchema = z.object({
   blindLabelType: z.enum(['letter', 'number']).optional(),
   type: z.enum(['internal', 'event']),
   template: z.enum(['standard', 'voting']),
+  saveToLibrary: z.boolean().optional(),
 });
 
 type SessionFormValues = z.infer<typeof sessionSchema>;
 
 export default function NewSessionPage() {
   const router = useRouter();
-  const { addSession, globalSamples } = useSessions();
+  const { addSession, globalSamples, addGlobalSample } = useSessions();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSampleModalOpen, setIsSampleModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
@@ -48,6 +49,7 @@ export default function NewSessionPage() {
       blindLabelType: 'number',
       type: 'event', // Default to Event as requested by user often using public events
       template: 'standard', // Default to Standard scoring
+      saveToLibrary: true,
     },
   });
 
@@ -91,6 +93,39 @@ export default function NewSessionPage() {
       };
 
       await addSession(newSession);
+
+      if (data.saveToLibrary) {
+        const normalize = (value: string) => (value || '').trim().toLowerCase().replace(/\s+/g, ' ');
+        const existingKeys = new Set(
+          globalSamples.map(s => `${normalize(s.name)}|${normalize(s.origin)}|${normalize(s.process)}|${normalize(s.type || '')}`)
+        );
+
+        const now = new Date().toISOString();
+        const candidates = data.samples.map(s => ({
+          name: s.name,
+          origin: s.origin,
+          process: s.process,
+          type: s.type,
+        }));
+
+        for (const s of candidates) {
+          const key = `${normalize(s.name)}|${normalize(s.origin)}|${normalize(s.process)}|${normalize(s.type)}`;
+          if (existingKeys.has(key)) continue;
+          existingKeys.add(key);
+
+          await addGlobalSample({
+            id: uuidv4(),
+            name: s.name,
+            origin: s.origin,
+            process: s.process,
+            type: s.type,
+            createdAt: now,
+            updatedAt: now,
+            status: 'active',
+          });
+        }
+      }
+
       router.push(`/session/${sessionId}`);
     } catch (error) {
       console.error("Failed to create session:", error);
@@ -341,6 +376,19 @@ export default function NewSessionPage() {
                 </button>
               </div>
             </div>
+
+            <label className="flex items-center gap-3 select-none">
+              <input
+                id="saveToLibrary"
+                type="checkbox"
+                {...register("saveToLibrary")}
+                className="w-4 h-4 text-amber-600 border-gray-300 rounded focus:ring-amber-500"
+              />
+              <div>
+                <div className="text-sm font-medium text-gray-900">创建时同步到样品库</div>
+                <div className="text-xs text-gray-500">默认开启；关闭后样品仅用于本次活动，不会沉淀到样品库。</div>
+              </div>
+            </label>
 
             <div className="space-y-4">
               {fields.length === 0 && (
