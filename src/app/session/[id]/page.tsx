@@ -349,6 +349,18 @@ export default function SessionDetailPage() {
     alert('分享文案已复制！可直接粘贴发送给好友。');
   };
 
+  const shareUrl = getShareUrl();
+  const getQrSize = (value: string) => {
+    const len = value.length;
+    if (len > 2000) return 320;
+    if (len > 1200) return 300;
+    if (len > 800) return 280;
+    if (len > 450) return 240;
+    return 220;
+  };
+  const qrSize = getQrSize(shareUrl);
+  const isDenseQr = shareUrl.length > 800 || session.samples.length > 20;
+
   const handleSync = async () => {
     // Validation: Check for unsaved changes
     if (dirtySampleId) {
@@ -631,13 +643,26 @@ export default function SessionDetailPage() {
 
                   <div className="flex justify-center py-2">
                     <div className="p-2 bg-white rounded-lg border border-gray-100">
-                      <QRCodeSVG value={getShareUrl()} size={180} />
+                      <QRCodeSVG
+                        value={shareUrl}
+                        size={qrSize}
+                        includeMargin
+                        level="L"
+                        bgColor="#ffffff"
+                        fgColor="#000000"
+                        style={{ shapeRendering: 'crispEdges' } as any}
+                      />
                     </div>
                   </div>
                   
                   <p className="text-center text-xs text-gray-400">
                     扫码或访问链接参与投票
                   </p>
+                  {isDenseQr && (
+                    <p className="text-center text-xs text-gray-400">
+                      样品较多时二维码会更密集，若手机难以识别请放大页面或使用“复制链接”加入。
+                    </p>
+                  )}
                 </div>
 
                 <div className="w-full">
@@ -1094,13 +1119,26 @@ export default function SessionDetailPage() {
 
                 <div className="flex justify-center py-2">
                   <div className="p-2 bg-white rounded-lg border border-gray-100" style={{ backgroundColor: '#ffffff', borderColor: '#f3f4f6' }}>
-                    <QRCodeSVG value={getShareUrl()} size={180} />
+                    <QRCodeSVG
+                      value={shareUrl}
+                      size={qrSize}
+                      includeMargin
+                      level="L"
+                      bgColor="#ffffff"
+                      fgColor="#000000"
+                      style={{ shapeRendering: 'crispEdges' } as any}
+                    />
                   </div>
                 </div>
                 
                 <p className="text-center text-xs" style={{ color: '#9ca3af' }}>
                   使用 Coffee Cupping Tool 扫码或访问链接加入
                 </p>
+                {isDenseQr && (
+                  <p className="text-center text-xs" style={{ color: '#9ca3af' }}>
+                    样品较多时二维码会更密集，若手机难以识别请放大页面或使用“复制文案”加入。
+                  </p>
+                )}
               </div>
 
               {/* Action Buttons */}
