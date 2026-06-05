@@ -15,6 +15,7 @@ function JoinSessionContent() {
   const [isProcessing, setIsProcessing] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [sessionData, setSessionData] = useState<any>(null);
+  const target = searchParams.get('to');
 
   useEffect(() => {
     const data = searchParams.get('data');
@@ -82,7 +83,11 @@ function JoinSessionContent() {
       };
 
       await addSession(newSession);
-      router.push(`/session/${sessionId}`);
+      if (target === 'report') {
+        router.push(`/session/${sessionId}/report`);
+      } else {
+        router.push(`/session/${sessionId}`);
+      }
     } catch (err) {
       console.error("Failed to create session:", err);
       setError('创建会话失败，请重试');
@@ -123,8 +128,8 @@ function JoinSessionContent() {
         <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-4">
           <Coffee className="w-8 h-8 text-amber-700" />
         </div>
-        <h1 className="text-2xl font-bold text-gray-900">加入杯测会话</h1>
-        <p className="text-gray-500">您即将加入以下杯测活动</p>
+        <h1 className="text-2xl font-bold text-gray-900">{target === 'report' ? '查看杯测报告' : '加入杯测会话'}</h1>
+        <p className="text-gray-500">{target === 'report' ? '将创建本地会话以展示报告' : '您即将加入以下杯测活动'}</p>
       </div>
 
       <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 space-y-4">
@@ -175,7 +180,7 @@ function JoinSessionContent() {
           className="w-full py-3 bg-amber-700 text-white rounded-xl font-bold hover:bg-amber-800 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
         >
           {isProcessing ? <Loader2 className="w-5 h-5 animate-spin" /> : null}
-          {isProcessing ? '正在创建...' : (sessionData.template === 'voting' ? '确认加入并开始投票' : '确认加入并开始打分')}
+          {isProcessing ? '正在创建...' : (target === 'report' ? '确认并查看报告' : (sessionData.template === 'voting' ? '确认加入并开始投票' : '确认加入并开始打分'))}
         </button>
         <Link 
           href="/"

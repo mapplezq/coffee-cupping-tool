@@ -6,6 +6,7 @@ import { useSessions } from '@/lib/context';
 import { ArrowLeft, Download, Share2, Star, Copy, X } from 'lucide-react';
 import Link from 'next/link';
 import { QRCodeSVG } from 'qrcode.react';
+import LZString from 'lz-string';
 import {
   Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -314,14 +315,41 @@ export default function ReportPage({ params }: ReportPageProps) {
   const activeScoreItem = activeSample ? reportData.averageScores.find((x: any) => x.name === activeSample.name) : null;
   const activeScore = activeScoreItem ? activeScoreItem.score : 0;
 
-  const reportUrl = typeof window !== 'undefined'
-    ? `${window.location.origin}/session/${id}/report`
+  const shareReportUrl = typeof window !== 'undefined'
+    ? (() => {
+        const shareData = {
+          name: session.name,
+          template: session.template,
+          cuppingDate: session.cuppingDate,
+          blindMode: session.blindMode,
+          blindLabelType: session.blindLabelType,
+          samples: (session.samples || []).map((s: any) => ({
+            name: s.name,
+            origin: s.origin,
+            process: s.process,
+            type: s.type,
+          })),
+        };
+        const jsonString = JSON.stringify(shareData);
+        const compressed = LZString.compressToEncodedURIComponent(jsonString);
+        return `${window.location.origin}/session/join?data=${compressed}&to=report`;
+      })()
     : '';
 
   const userAgent = typeof navigator !== 'undefined' ? navigator.userAgent : '';
   const isWeChat = /MicroMessenger/i.test(userAgent);
 
-  const shareText = `☕️ 杯测报告\n\n📌 主题：${session.name}\n📅 日期：${formatDate(session.cuppingDate)}\n👥 参与人数：${reportData.totalParticipants}\n\n👇 打开链接查看：\n${reportUrl}`;
+  const shareText = `☕️ 杯测报告\n\n📌 主题：${session.name}\n📅 日期：${formatDate(session.cuppingDate)}\n👥 参与人数：${reportData.totalParticipants}\n\n👇 打开链接查看：\n${shareReportUrl}`;
+
+  const getQrSize = (value: string) => {
+    const len = value.length;
+    if (len > 2000) return 320;
+    if (len > 1200) return 300;
+    if (len > 800) return 280;
+    if (len > 450) return 260;
+    return 240;
+  };
+  const qrSize = getQrSize(shareReportUrl);
 
   const handleShare = () => {
     setShareCopied(false);
@@ -334,7 +362,7 @@ export default function ReportPage({ params }: ReportPageProps) {
       await (navigator as any).share({
         title: `杯测报告：${session.name}`,
         text: shareText,
-        url: reportUrl,
+        url: shareReportUrl,
       });
     } catch (_) {
       setIsShareOpen(true);
@@ -585,8 +613,8 @@ export default function ReportPage({ params }: ReportPageProps) {
                 <div className="flex justify-center py-2">
                   <div className="p-2 bg-white rounded-lg border border-gray-100">
                     <QRCodeSVG
-                      value={reportUrl}
-                      size={240}
+                      value={shareReportUrl}
+                      size={qrSize}
                       includeMargin
                       level="L"
                       bgColor="#ffffff"
