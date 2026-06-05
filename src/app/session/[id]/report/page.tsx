@@ -3,8 +3,9 @@
 import { useEffect, useState, use } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSessions } from '@/lib/context';
-import { ArrowLeft, Download, Share2, Star } from 'lucide-react';
+import { ArrowLeft, Download, Share2, Star, Copy, X } from 'lucide-react';
 import Link from 'next/link';
+import { QRCodeSVG } from 'qrcode.react';
 import {
   Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -26,6 +27,8 @@ export default function ReportPage({ params }: ReportPageProps) {
   const [reportData, setReportData] = useState<any>(null);
   const [isLoadingReport, setIsLoadingReport] = useState(false);
   const [reportError, setReportError] = useState<string>('');
+  const [isShareOpen, setIsShareOpen] = useState(false);
+  const [shareCopied, setShareCopied] = useState(false);
 
   useEffect(() => {
     const foundSession = sessions.find(s => s.id === id);
@@ -311,6 +314,38 @@ export default function ReportPage({ params }: ReportPageProps) {
   const activeScoreItem = activeSample ? reportData.averageScores.find((x: any) => x.name === activeSample.name) : null;
   const activeScore = activeScoreItem ? activeScoreItem.score : 0;
 
+  const reportUrl = typeof window !== 'undefined'
+    ? `${window.location.origin}/session/${id}/report`
+    : '';
+
+  const shareText = `☕️ 杯测报告\n\n📌 主题：${session.name}\n📅 日期：${formatDate(session.cuppingDate)}\n👥 参与人数：${reportData.totalParticipants}\n\n👇 打开链接查看：\n${reportUrl}`;
+
+  const handleShare = async () => {
+    setShareCopied(false);
+    if (typeof navigator !== 'undefined' && (navigator as any).share) {
+      try {
+        await (navigator as any).share({
+          title: `杯测报告：${session.name}`,
+          text: shareText,
+          url: reportUrl,
+        });
+        return;
+      } catch (_) {
+      }
+    }
+    setIsShareOpen(true);
+  };
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(shareText);
+      setShareCopied(true);
+      setTimeout(() => setShareCopied(false), 2000);
+    } catch (_) {
+      window.prompt('复制下面内容分享给他人：', shareText);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-neutral-50 pb-20">
       {/* Header */}
@@ -325,7 +360,10 @@ export default function ReportPage({ params }: ReportPageProps) {
               <p className="text-xs text-gray-500">{session.name} · {formatDate(session.cuppingDate)}</p>
             </div>
           </div>
-          <button className="flex items-center gap-2 bg-amber-700 hover:bg-amber-800 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+          <button
+            onClick={handleShare}
+            className="flex items-center gap-2 bg-amber-700 hover:bg-amber-800 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+          >
             <Download className="w-4 h-4" />
             导出长图
           </button>
@@ -508,6 +546,77 @@ export default function ReportPage({ params }: ReportPageProps) {
           )}
         </div>
       </div>
+      {isShareOpen && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md animate-in fade-in zoom-in duration-200 max-h-[90vh] flex flex-col">
+            <div className="p-6 border-b flex justify-between items-center shrink-0">
+              <div className="flex items-center gap-2">
+                <Share2 className="w-5 h-5 text-gray-600" />
+                <h2 className="text-xl font-bold text-gray-900">分享杯测报告</h2>
+              </div>
+              <button onClick={() => setIsShareOpen(false)} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
+                <X className="w-5 h-5 text-gray-400" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-6 flex flex-col items-center overflow-y-auto">
+              <div className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm w-full space-y-4">
+                <div className="text-center space-y-1">
+                  <h3 className="font-bold text-lg text-gray-900">{session.name}</h3>
+                  <p className="text-sm text-gray-500">{formatDate(session.cuppingDate)}</p>
+                </div>
+
+                <div className="border-t border-b border-gray-100 py-4 space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-500">参与人数</span>
+                    <span className="font-medium text-gray-900">{reportData.totalParticipants}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-500">样品数量</span>
+                    <span className="font-medium text-gray-900">{session.samples.length} 支</span>
+                  </div>
+                </div>
+
+                <div className="flex justify-center py-2">
+                  <div className="p-2 bg-white rounded-lg border border-gray-100">
+                    <QRCodeSVG
+                      value={reportUrl}
+                      size={240}
+                      includeMargin
+                      level="L"
+                      bgColor="#ffffff"
+                      fgColor="#000000"
+                      style={{ shapeRendering: 'crispEdges' } as any}
+                    />
+                  </div>
+                </div>
+
+                <p className="text-center text-xs text-gray-400">扫码或复制文案分享报告</p>
+              </div>
+
+              <div className="w-full space-y-3">
+                <button
+                  onClick={handleCopy}
+                  className="w-full flex items-center justify-center gap-2 py-3 px-4 bg-amber-600 hover:bg-amber-700 text-white rounded-xl font-medium transition-colors shadow-sm"
+                >
+                  <Copy className="w-4 h-4" />
+                  {shareCopied ? '已复制' : '复制文案'}
+                </button>
+                <button
+                  onClick={() => window.print()}
+                  className="w-full flex items-center justify-center gap-2 py-3 px-4 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 rounded-xl font-medium transition-colors shadow-sm"
+                >
+                  <Download className="w-4 h-4" />
+                  保存为 PDF
+                </button>
+                <div className="text-xs text-gray-500 bg-gray-50 border border-gray-100 rounded-xl p-3 leading-5">
+                  iPhone Safari 可在分享菜单选择“整页截屏”生成长图；安卓可使用系统“滚动截屏”。
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
