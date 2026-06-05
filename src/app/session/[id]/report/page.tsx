@@ -318,22 +318,27 @@ export default function ReportPage({ params }: ReportPageProps) {
     ? `${window.location.origin}/session/${id}/report`
     : '';
 
+  const userAgent = typeof navigator !== 'undefined' ? navigator.userAgent : '';
+  const isWeChat = /MicroMessenger/i.test(userAgent);
+
   const shareText = `☕️ 杯测报告\n\n📌 主题：${session.name}\n📅 日期：${formatDate(session.cuppingDate)}\n👥 参与人数：${reportData.totalParticipants}\n\n👇 打开链接查看：\n${reportUrl}`;
 
-  const handleShare = async () => {
+  const handleShare = () => {
     setShareCopied(false);
-    if (typeof navigator !== 'undefined' && (navigator as any).share) {
-      try {
-        await (navigator as any).share({
-          title: `杯测报告：${session.name}`,
-          text: shareText,
-          url: reportUrl,
-        });
-        return;
-      } catch (_) {
-      }
-    }
     setIsShareOpen(true);
+  };
+
+  const handleNativeShare = async () => {
+    if (typeof navigator === 'undefined' || !(navigator as any).share) return;
+    try {
+      await (navigator as any).share({
+        title: `杯测报告：${session.name}`,
+        text: shareText,
+        url: reportUrl,
+      });
+    } catch (_) {
+      setIsShareOpen(true);
+    }
   };
 
   const handleCopy = async () => {
@@ -595,6 +600,11 @@ export default function ReportPage({ params }: ReportPageProps) {
               </div>
 
               <div className="w-full space-y-3">
+                {isWeChat && (
+                  <div className="text-xs text-gray-500 bg-gray-50 border border-gray-100 rounded-xl p-3 leading-5">
+                    微信里用“转给朋友”经常会直接关闭且不发送，建议使用“复制文案”，粘贴到微信聊天即可。
+                  </div>
+                )}
                 <button
                   onClick={handleCopy}
                   className="w-full flex items-center justify-center gap-2 py-3 px-4 bg-amber-600 hover:bg-amber-700 text-white rounded-xl font-medium transition-colors shadow-sm"
@@ -602,6 +612,15 @@ export default function ReportPage({ params }: ReportPageProps) {
                   <Copy className="w-4 h-4" />
                   {shareCopied ? '已复制' : '复制文案'}
                 </button>
+                {!isWeChat && typeof navigator !== 'undefined' && (navigator as any).share && (
+                  <button
+                    onClick={handleNativeShare}
+                    className="w-full flex items-center justify-center gap-2 py-3 px-4 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 rounded-xl font-medium transition-colors shadow-sm"
+                  >
+                    <Share2 className="w-4 h-4" />
+                    系统分享
+                  </button>
+                )}
                 <button
                   onClick={() => window.print()}
                   className="w-full flex items-center justify-center gap-2 py-3 px-4 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 rounded-xl font-medium transition-colors shadow-sm"
