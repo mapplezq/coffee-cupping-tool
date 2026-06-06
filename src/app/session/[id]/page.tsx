@@ -10,7 +10,7 @@ import { ArrowLeft, RefreshCw, CheckCircle, Settings, Share2, X, Eye, EyeOff, Ch
 import Link from 'next/link';
 import { cn, formatDate } from '@/lib/utils';
 import { v4 as uuidv4 } from 'uuid';
-import { QRCodeSVG } from 'qrcode.react';
+import { QRCodeCanvas } from 'qrcode.react';
 import LZString from 'lz-string';
 
 export default function SessionDetailPage() {
@@ -23,6 +23,7 @@ export default function SessionDetailPage() {
   const [isSyncing, setIsSyncing] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isShareOpen, setIsShareOpen] = useState(false);
+  const [isQrZoomOpen, setIsQrZoomOpen] = useState(false);
   const [dirtySampleId, setDirtySampleId] = useState<string | null>(null);
   const [showBlindMap, setShowBlindMap] = useState(false);
 
@@ -352,11 +353,11 @@ export default function SessionDetailPage() {
   const shareUrl = getShareUrl();
   const getQrSize = (value: string) => {
     const len = value.length;
-    if (len > 2000) return 320;
-    if (len > 1200) return 300;
-    if (len > 800) return 280;
-    if (len > 450) return 240;
-    return 220;
+    if (len > 2000) return 360;
+    if (len > 1200) return 340;
+    if (len > 800) return 320;
+    if (len > 450) return 280;
+    return 260;
   };
   const qrSize = getQrSize(shareUrl);
   const isDenseQr = shareUrl.length > 800 || session.samples.length > 20;
@@ -643,21 +644,35 @@ export default function SessionDetailPage() {
 
                   <div className="flex justify-center py-2">
                     <div className="p-2 bg-white rounded-lg border border-gray-100">
-                      <QRCodeSVG
+                      <button
+                        type="button"
+                        onClick={() => setIsQrZoomOpen(true)}
+                        className="block"
+                        aria-label="放大二维码"
+                      >
+                      <QRCodeCanvas
                         value={shareUrl}
                         size={qrSize}
                         includeMargin
                         level="L"
                         bgColor="#ffffff"
                         fgColor="#000000"
-                        style={{ shapeRendering: 'crispEdges' } as any}
+                        style={{ imageRendering: 'pixelated' } as any}
                       />
+                      </button>
                     </div>
                   </div>
                   
                   <p className="text-center text-xs text-gray-400">
                     扫码或访问链接参与投票
                   </p>
+                  <button
+                    type="button"
+                    onClick={() => setIsQrZoomOpen(true)}
+                    className="w-full text-center text-xs text-amber-700 hover:text-amber-800"
+                  >
+                    放大二维码
+                  </button>
                   {isDenseQr && (
                     <p className="text-center text-xs text-gray-400">
                       样品较多时二维码会更密集，若手机难以识别请放大页面或使用“复制链接”加入。
@@ -1119,21 +1134,36 @@ export default function SessionDetailPage() {
 
                 <div className="flex justify-center py-2">
                   <div className="p-2 bg-white rounded-lg border border-gray-100" style={{ backgroundColor: '#ffffff', borderColor: '#f3f4f6' }}>
-                    <QRCodeSVG
+                    <button
+                      type="button"
+                      onClick={() => setIsQrZoomOpen(true)}
+                      className="block"
+                      aria-label="放大二维码"
+                    >
+                    <QRCodeCanvas
                       value={shareUrl}
                       size={qrSize}
                       includeMargin
                       level="L"
                       bgColor="#ffffff"
                       fgColor="#000000"
-                      style={{ shapeRendering: 'crispEdges' } as any}
+                      style={{ imageRendering: 'pixelated' } as any}
                     />
+                    </button>
                   </div>
                 </div>
                 
                 <p className="text-center text-xs" style={{ color: '#9ca3af' }}>
                   使用 Coffee Cupping Tool 扫码或访问链接加入
                 </p>
+                <button
+                  type="button"
+                  onClick={() => setIsQrZoomOpen(true)}
+                  className="w-full text-center text-xs"
+                  style={{ color: '#b45309' }}
+                >
+                  放大二维码
+                </button>
                 {isDenseQr && (
                   <p className="text-center text-xs" style={{ color: '#9ca3af' }}>
                     样品较多时二维码会更密集，若手机难以识别请放大页面或使用“复制文案”加入。
@@ -1151,6 +1181,35 @@ export default function SessionDetailPage() {
                   复制文案
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {isQrZoomOpen && (
+        <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div className="text-sm font-semibold text-gray-900">放大二维码</div>
+              <button onClick={() => setIsQrZoomOpen(false)} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
+                <X className="w-5 h-5 text-gray-400" />
+              </button>
+            </div>
+            <div className="flex justify-center">
+              <div className="p-2 bg-white rounded-lg border border-gray-200">
+                <QRCodeCanvas
+                  value={shareUrl}
+                  size={420}
+                  includeMargin
+                  level="L"
+                  bgColor="#ffffff"
+                  fgColor="#000000"
+                  style={{ imageRendering: 'pixelated' } as any}
+                />
+              </div>
+            </div>
+            <div className="mt-4 text-xs text-gray-500 text-center">
+              建议将二维码保持在屏幕正中，手机与屏幕距离 15–25cm，避免屏幕反光。
             </div>
           </div>
         </div>
