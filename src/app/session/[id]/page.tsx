@@ -170,7 +170,7 @@ export default function SessionDetailPage() {
 
   const sessionId = params.id as string;
 
-  const getShareUrl = () => {
+  const getShareUrl = (mode: 'join' | 'handoff' = 'join') => {
     if (!session) return '';
     const shareData = {
       v: 2,
@@ -185,7 +185,7 @@ export default function SessionDetailPage() {
     const jsonString = JSON.stringify(shareData);
     const compressed = LZString.compressToEncodedURIComponent(jsonString);
     const baseUrl = window.location.origin;
-    return `${baseUrl}/session/join?data=${compressed}`;
+    return `${baseUrl}/session/join?data=${compressed}&mode=${mode}`;
   };
 
   useEffect(() => {
@@ -337,16 +337,18 @@ export default function SessionDetailPage() {
     }
   };
 
-  const handleCopyLink = () => {
+  const handleCopyLink = (mode: 'join' | 'handoff' = 'join') => {
     if (!session) return;
-    const url = getShareUrl();
-    const text = `☕️ 邀请您参加杯测会话\n\n📅 主题：${session.name}\n🕒 日期：${formatDate(session.cuppingDate)}\n🧪 样品数：${session.samples.length}支\n${session.blindMode ? '🕶️ 模式：盲测' : '📝 模式：公开'}\n\n👇 点击链接或保存二维码加入：\n${url}`;
+    const url = getShareUrl(mode);
+    const title = mode === 'handoff' ? '☕️ 杯测活动交接' : '☕️ 邀请您参加杯测会话';
+    const action = mode === 'handoff' ? '👇 点击链接或保存二维码接手该活动：' : '👇 点击链接或保存二维码加入：';
+    const text = `${title}\n\n📅 主题：${session.name}\n🕒 日期：${formatDate(session.cuppingDate)}\n🧪 样品数：${session.samples.length}支\n${session.blindMode ? '🕶️ 模式：盲测' : '📝 模式：公开'}\n\n${action}\n${url}`;
     
     navigator.clipboard.writeText(text);
-    alert('分享文案已复制！可直接粘贴发送给好友。');
+    alert(mode === 'handoff' ? '交接链接已复制！可直接发给同事接手。' : '分享文案已复制！可直接粘贴发送给好友。');
   };
 
-  const shareUrl = getShareUrl();
+  const shareUrl = getShareUrl('join');
   const getQrSize = (value: string) => {
     const len = value.length;
     if (len > 2000) return 360;
@@ -678,11 +680,20 @@ export default function SessionDetailPage() {
 
                 <div className="w-full">
                   <button
-                    onClick={handleCopyLink}
+                    onClick={() => handleCopyLink('join')}
                     className="w-full flex items-center justify-center gap-2 py-3 px-4 bg-amber-600 hover:bg-amber-700 text-white rounded-xl font-medium transition-colors shadow-sm"
                   >
                     <Copy className="w-4 h-4" />
                     复制链接
+                  </button>
+                </div>
+                <div className="w-full">
+                  <button
+                    onClick={() => handleCopyLink('handoff')}
+                    className="w-full flex items-center justify-center gap-2 py-3 px-4 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 rounded-xl font-medium transition-colors shadow-sm"
+                  >
+                    <ListChecks className="w-4 h-4" />
+                    交接给同事
                   </button>
                 </div>
               </div>
@@ -1170,11 +1181,20 @@ export default function SessionDetailPage() {
               {/* Action Buttons */}
               <div className="w-full">
                 <button
-                  onClick={handleCopyLink}
+                  onClick={() => handleCopyLink('join')}
                   className="w-full flex items-center justify-center gap-2 py-3 px-4 bg-amber-600 hover:bg-amber-700 text-white rounded-xl font-medium transition-colors shadow-sm"
                 >
                   <Copy className="w-4 h-4" />
                   复制文案
+                </button>
+              </div>
+              <div className="w-full">
+                <button
+                  onClick={() => handleCopyLink('handoff')}
+                  className="w-full flex items-center justify-center gap-2 py-3 px-4 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 rounded-xl font-medium transition-colors shadow-sm"
+                >
+                  <ListChecks className="w-4 h-4" />
+                  交接给同事
                 </button>
               </div>
             </div>
