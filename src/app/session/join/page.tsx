@@ -42,7 +42,44 @@ function JoinSessionContent() {
       }
 
       const decoded = JSON.parse(jsonString);
-      setSessionData(decoded);
+
+      const normalized = (() => {
+        if (decoded && decoded.v === 2) {
+          const samples = Array.isArray(decoded.s)
+            ? decoded.s.map((t: any) => ({
+                name: (t?.[0] ?? '').toString(),
+                origin: (t?.[1] ?? '').toString(),
+                process: (t?.[2] ?? '').toString(),
+                type: (t?.[3] ?? 'pre_shipment').toString(),
+              }))
+            : [];
+          return {
+            name: decoded.n,
+            template: decoded.t,
+            cuppingDate: decoded.d,
+            blindMode: decoded.b,
+            blindLabelType: decoded.l,
+            samples,
+          };
+        }
+
+        if (decoded && typeof decoded === 'object' && Array.isArray((decoded as any).samples) && Array.isArray((decoded as any).samples[0])) {
+          const samples = (decoded as any).samples.map((t: any) => ({
+            name: (t?.[0] ?? '').toString(),
+            origin: (t?.[1] ?? '').toString(),
+            process: (t?.[2] ?? '').toString(),
+            type: (t?.[3] ?? 'pre_shipment').toString(),
+          }));
+          return {
+            ...decoded,
+            samples,
+          };
+        }
+
+        return decoded;
+      })();
+
+      setSessionData(normalized);
       setIsProcessing(false);
     } catch (e) {
       console.error("Failed to parse session data:", e);
@@ -74,8 +111,8 @@ function JoinSessionContent() {
           id: uuidv4(),
           sessionId: sessionId,
           name: s.name,
-          origin: s.origin,
-          process: s.process,
+          origin: s.origin || '',
+          process: s.process || '',
           type: s.type || 'pre_shipment',
           createdAt: new Date().toISOString(),
           // Don't copy scores

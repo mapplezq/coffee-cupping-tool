@@ -173,17 +173,13 @@ export default function SessionDetailPage() {
   const getShareUrl = () => {
     if (!session) return '';
     const shareData = {
-      name: session.name,
-      template: session.template, // Include template type
-      cuppingDate: session.cuppingDate,
-      blindMode: session.blindMode, // Include blind mode settings
-      blindLabelType: session.blindLabelType,
-      samples: session.samples.map(s => ({
-        name: s.name,
-        origin: s.origin,
-        process: s.process,
-        type: s.type
-      }))
+      v: 2,
+      n: session.name,
+      t: session.template,
+      d: session.cuppingDate,
+      b: session.blindMode,
+      l: session.blindLabelType,
+      s: session.samples.map(s => [s.name, s.origin, s.process, s.type] as const),
     };
     // Use LZString to compress data for shorter URL
     const jsonString = JSON.stringify(shareData);

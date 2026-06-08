@@ -318,17 +318,13 @@ export default function ReportPage({ params }: ReportPageProps) {
   const shareReportUrl = typeof window !== 'undefined'
     ? (() => {
         const shareData = {
-          name: session.name,
-          template: session.template,
-          cuppingDate: session.cuppingDate,
-          blindMode: session.blindMode,
-          blindLabelType: session.blindLabelType,
-          samples: (session.samples || []).map((s: any) => ({
-            name: s.name,
-            origin: s.origin,
-            process: s.process,
-            type: s.type,
-          })),
+          v: 2,
+          n: session.name,
+          t: session.template,
+          d: session.cuppingDate,
+          b: session.blindMode,
+          l: session.blindLabelType,
+          s: (session.samples || []).map((s: any) => [s.name, s.origin, s.process, s.type] as const),
         };
         const jsonString = JSON.stringify(shareData);
         const compressed = LZString.compressToEncodedURIComponent(jsonString);
