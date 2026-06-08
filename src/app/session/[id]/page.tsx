@@ -24,6 +24,8 @@ export default function SessionDetailPage() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isShareOpen, setIsShareOpen] = useState(false);
   const [isQrZoomOpen, setIsQrZoomOpen] = useState(false);
+  const [shareUrl, setShareUrl] = useState('');
+  const [handoffUrl, setHandoffUrl] = useState('');
   const [dirtySampleId, setDirtySampleId] = useState<string | null>(null);
   const [showBlindMap, setShowBlindMap] = useState(false);
 
@@ -170,24 +172,6 @@ export default function SessionDetailPage() {
 
   const sessionId = params.id as string;
 
-  const getShareUrl = (mode: 'join' | 'handoff' = 'join') => {
-    if (!session) return '';
-    const shareData = {
-      v: 2,
-      n: session.name,
-      t: session.template,
-      d: session.cuppingDate,
-      b: session.blindMode,
-      l: session.blindLabelType,
-      s: session.samples.map(s => [s.name, s.origin, s.process, s.type] as const),
-    };
-    // Use LZString to compress data for shorter URL
-    const jsonString = JSON.stringify(shareData);
-    const compressed = LZString.compressToEncodedURIComponent(jsonString);
-    const baseUrl = window.location.origin;
-    return `${baseUrl}/session/join?data=${compressed}&mode=${mode}`;
-  };
-
   useEffect(() => {
     if (!loading && sessionId) {
       const found = sessions.find(s => s.id === sessionId);
@@ -201,6 +185,67 @@ export default function SessionDetailPage() {
       }
     }
   }, [sessions, loading, sessionId, activeSampleId]);
+
+  useEffect(() => {
+    if (!session) return;
+    if (typeof window === 'undefined') return;
+
+    const bytesToBase64Url = (bytes: Uint8Array) => {
+      let binary = '';
+      const chunkSize = 0x8000;
+      for (let i = 0; i < bytes.length; i += chunkSize) {
+        binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize));
+      }
+      return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
+    };
+
+    const buildShareData = (lite: boolean) => ({
+      v: 2,
+      n: session.name,
+      t: session.template,
+      d: session.cuppingDate,
+      b: session.blindMode,
+      l: session.blindLabelType,
+      s: session.samples.map(s => (lite ? [s.name] : [s.name, s.origin, s.process, s.type]) as any),
+    });
+
+    const baseUrl = window.location.origin;
+    const jsonFull = JSON.stringify(buildShareData(false));
+    const lzFull = LZString.compressToEncodedURIComponent(jsonFull);
+
+    const jsonString = lzFull.length > 1200 ? JSON.stringify(buildShareData(true)) : jsonFull;
+    const lz = lzFull.length > 1200 ? LZString.compressToEncodedURIComponent(jsonString) : lzFull;
+
+    const applyUrls = (dataParam: string) => {
+      setShareUrl(`${baseUrl}/session/join?data=${dataParam}&mode=join`);
+      setHandoffUrl(`${baseUrl}/session/join?data=${dataParam}&mode=handoff`);
+    };
+
+    applyUrls(lz);
+
+    const supportsGzip = typeof (window as any).CompressionStream !== 'undefined';
+    if (!supportsGzip) return;
+
+    let cancelled = false;
+    const run = async () => {
+      try {
+        const cs = new (window as any).CompressionStream('gzip');
+        const compressedBuffer = await new Response(
+          new Blob([jsonString]).stream().pipeThrough(cs)
+        ).arrayBuffer();
+        const gz = `gz:${bytesToBase64Url(new Uint8Array(compressedBuffer))}`;
+        if (cancelled) return;
+        if (gz.length < lz.length) {
+          applyUrls(gz);
+        }
+      } catch (_) {
+      }
+    };
+    run();
+    return () => {
+      cancelled = true;
+    };
+  }, [session]);
 
   if (loading || !session) {
     return (
@@ -339,16 +384,21 @@ export default function SessionDetailPage() {
 
   const handleCopyLink = (mode: 'join' | 'handoff' = 'join') => {
     if (!session) return;
-    const url = getShareUrl(mode);
-    const title = mode === 'handoff' ? '☕️ 杯测活动交接' : '☕️ 邀请您参加杯测会话';
-    const action = mode === 'handoff' ? '👇 点击链接或保存二维码接手该活动：' : '👇 点击链接或保存二维码加入：';
-    const text = `${title}\n\n📅 主题：${session.name}\n🕒 日期：${formatDate(session.cuppingDate)}\n🧪 样品数：${session.samples.length}支\n${session.blindMode ? '🕶️ 模式：盲测' : '📝 模式：公开'}\n\n${action}\n${url}`;
-    
-    navigator.clipboard.writeText(text);
-    alert(mode === 'handoff' ? '交接链接已复制！可直接发给同事接手。' : '分享文案已复制！可直接粘贴发送给好友。');
-  };
+    const url = mode === 'handoff' ? handoffUrl : shareUrl;
+    if (!url) return;
 
-  const shareUrl = getShareUrl('join');
+    const userAgent = typeof navigator !== 'undefined' ? navigator.userAgent : '';
+    const isWeChat = /MicroMessenger/i.test(userAgent);
+    if (mode === 'handoff' || isWeChat) {
+      navigator.clipboard.writeText(url);
+      alert(mode === 'handoff' ? '交接链接已复制！直接粘贴发给同事即可。' : '链接已复制！直接粘贴发送即可。');
+      return;
+    }
+
+    const text = `☕️ 邀请您参加杯测会话\n\n📅 主题：${session.name}\n🕒 日期：${formatDate(session.cuppingDate)}\n🧪 样品数：${session.samples.length}支\n${session.blindMode ? '🕶️ 模式：盲测' : '📝 模式：公开'}\n\n👇 点击链接或保存二维码加入：\n${url}`;
+    navigator.clipboard.writeText(text);
+    alert('分享文案已复制！可直接粘贴发送给好友。');
+  };
   const getQrSize = (value: string) => {
     const len = value.length;
     if (len > 2000) return 360;
@@ -357,8 +407,8 @@ export default function SessionDetailPage() {
     if (len > 450) return 280;
     return 260;
   };
-  const qrSize = getQrSize(shareUrl);
-  const isDenseQr = shareUrl.length > 800 || session.samples.length > 20;
+  const qrSize = getQrSize(shareUrl || '');
+  const isDenseQr = (shareUrl || '').length > 800 || session.samples.length > 20;
 
   const handleSync = async () => {
     // Validation: Check for unsaved changes
@@ -642,22 +692,28 @@ export default function SessionDetailPage() {
 
                   <div className="flex justify-center py-2">
                     <div className="p-2 bg-white rounded-lg border border-gray-100">
-                      <button
-                        type="button"
-                        onClick={() => setIsQrZoomOpen(true)}
-                        className="block"
-                        aria-label="放大二维码"
-                      >
-                      <QRCodeCanvas
-                        value={shareUrl}
-                        size={qrSize}
-                        includeMargin
-                        level="L"
-                        bgColor="#ffffff"
-                        fgColor="#000000"
-                        style={{ imageRendering: 'pixelated' } as any}
-                      />
-                      </button>
+                      {shareUrl ? (
+                        <button
+                          type="button"
+                          onClick={() => setIsQrZoomOpen(true)}
+                          className="block"
+                          aria-label="放大二维码"
+                        >
+                          <QRCodeCanvas
+                            value={shareUrl}
+                            size={qrSize}
+                            includeMargin
+                            level="L"
+                            bgColor="#ffffff"
+                            fgColor="#000000"
+                            style={{ imageRendering: 'pixelated' } as any}
+                          />
+                        </button>
+                      ) : (
+                        <div className="w-[260px] h-[260px] flex items-center justify-center text-xs text-gray-400">
+                          正在生成二维码...
+                        </div>
+                      )}
                     </div>
                   </div>
                   
@@ -1141,22 +1197,28 @@ export default function SessionDetailPage() {
 
                 <div className="flex justify-center py-2">
                   <div className="p-2 bg-white rounded-lg border border-gray-100" style={{ backgroundColor: '#ffffff', borderColor: '#f3f4f6' }}>
-                    <button
-                      type="button"
-                      onClick={() => setIsQrZoomOpen(true)}
-                      className="block"
-                      aria-label="放大二维码"
-                    >
-                    <QRCodeCanvas
-                      value={shareUrl}
-                      size={qrSize}
-                      includeMargin
-                      level="L"
-                      bgColor="#ffffff"
-                      fgColor="#000000"
-                      style={{ imageRendering: 'pixelated' } as any}
-                    />
-                    </button>
+                    {shareUrl ? (
+                      <button
+                        type="button"
+                        onClick={() => setIsQrZoomOpen(true)}
+                        className="block"
+                        aria-label="放大二维码"
+                      >
+                        <QRCodeCanvas
+                          value={shareUrl}
+                          size={qrSize}
+                          includeMargin
+                          level="L"
+                          bgColor="#ffffff"
+                          fgColor="#000000"
+                          style={{ imageRendering: 'pixelated' } as any}
+                        />
+                      </button>
+                    ) : (
+                      <div className="w-[260px] h-[260px] flex items-center justify-center text-xs" style={{ color: '#9ca3af' }}>
+                        正在生成二维码...
+                      </div>
+                    )}
                   </div>
                 </div>
                 
@@ -1213,15 +1275,21 @@ export default function SessionDetailPage() {
             </div>
             <div className="flex justify-center">
               <div className="p-2 bg-white rounded-lg border border-gray-200">
-                <QRCodeCanvas
-                  value={shareUrl}
-                  size={420}
-                  includeMargin
-                  level="L"
-                  bgColor="#ffffff"
-                  fgColor="#000000"
-                  style={{ imageRendering: 'pixelated' } as any}
-                />
+                {shareUrl ? (
+                  <QRCodeCanvas
+                    value={shareUrl}
+                    size={420}
+                    includeMargin
+                    level="L"
+                    bgColor="#ffffff"
+                    fgColor="#000000"
+                    style={{ imageRendering: 'pixelated' } as any}
+                  />
+                ) : (
+                  <div className="w-[420px] h-[420px] flex items-center justify-center text-sm text-gray-400">
+                    正在生成二维码...
+                  </div>
+                )}
               </div>
             </div>
             <div className="mt-4 text-xs text-gray-500 text-center">

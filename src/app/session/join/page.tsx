@@ -26,67 +26,99 @@ function JoinSessionContent() {
       return;
     }
 
-    try {
-      let jsonString = LZString.decompressFromEncodedURIComponent(data);
-      
-      // Fallback for old links (base64 encoded)
-      if (!jsonString) {
-        try {
-          jsonString = decodeURIComponent(atob(data));
-        } catch (e) {
-          // Ignore fallback error
-        }
+    const base64UrlToBytes = (value: string) => {
+      const base64 = value.replace(/-/g, '+').replace(/_/g, '/');
+      const padded = base64 + '='.repeat((4 - (base64.length % 4)) % 4);
+      const binary = atob(padded);
+      const bytes = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+      return bytes;
+    };
+
+    const normalizeDecoded = (decoded: any) => {
+      if (decoded && decoded.v === 2) {
+        const samples = Array.isArray(decoded.s)
+          ? decoded.s.map((t: any) => ({
+              name: (t?.[0] ?? '').toString(),
+              origin: (t?.[1] ?? '').toString(),
+              process: (t?.[2] ?? '').toString(),
+              type: (t?.[3] ?? 'pre_shipment').toString(),
+            }))
+          : [];
+        return {
+          name: decoded.n,
+          template: decoded.t,
+          cuppingDate: decoded.d,
+          blindMode: decoded.b,
+          blindLabelType: decoded.l,
+          samples,
+        };
       }
 
-      if (!jsonString) {
-        throw new Error('Failed to decompress/decode data');
+      if (decoded && typeof decoded === 'object' && Array.isArray((decoded as any).samples) && Array.isArray((decoded as any).samples[0])) {
+        const samples = (decoded as any).samples.map((t: any) => ({
+          name: (t?.[0] ?? '').toString(),
+          origin: (t?.[1] ?? '').toString(),
+          process: (t?.[2] ?? '').toString(),
+          type: (t?.[3] ?? 'pre_shipment').toString(),
+        }));
+        return {
+          ...decoded,
+          samples,
+        };
       }
 
-      const decoded = JSON.parse(jsonString);
+      return decoded;
+    };
 
-      const normalized = (() => {
-        if (decoded && decoded.v === 2) {
-          const samples = Array.isArray(decoded.s)
-            ? decoded.s.map((t: any) => ({
-                name: (t?.[0] ?? '').toString(),
-                origin: (t?.[1] ?? '').toString(),
-                process: (t?.[2] ?? '').toString(),
-                type: (t?.[3] ?? 'pre_shipment').toString(),
-              }))
-            : [];
-          return {
-            name: decoded.n,
-            template: decoded.t,
-            cuppingDate: decoded.d,
-            blindMode: decoded.b,
-            blindLabelType: decoded.l,
-            samples,
-          };
+    let cancelled = false;
+    const run = async () => {
+      try {
+        let jsonString = '';
+
+        if (data.startsWith('gz:')) {
+          if (typeof (window as any).DecompressionStream === 'undefined') {
+            throw new Error('Browser does not support gzip decompression');
+          }
+          const raw = data.slice(3);
+          const bytes = base64UrlToBytes(raw);
+          const ds = new (window as any).DecompressionStream('gzip');
+          const decompressedBuffer = await new Response(
+            new Blob([bytes]).stream().pipeThrough(ds)
+          ).arrayBuffer();
+          jsonString = new TextDecoder().decode(decompressedBuffer);
+        } else {
+          jsonString = LZString.decompressFromEncodedURIComponent(data) || '';
+          if (!jsonString) {
+            try {
+              jsonString = decodeURIComponent(atob(data));
+            } catch (_) {
+            }
+          }
         }
 
-        if (decoded && typeof decoded === 'object' && Array.isArray((decoded as any).samples) && Array.isArray((decoded as any).samples[0])) {
-          const samples = (decoded as any).samples.map((t: any) => ({
-            name: (t?.[0] ?? '').toString(),
-            origin: (t?.[1] ?? '').toString(),
-            process: (t?.[2] ?? '').toString(),
-            type: (t?.[3] ?? 'pre_shipment').toString(),
-          }));
-          return {
-            ...decoded,
-            samples,
-          };
+        if (!jsonString) {
+          throw new Error('Failed to decompress/decode data');
         }
 
-        return decoded;
-      })();
+        const decoded = JSON.parse(jsonString);
+        const normalized = normalizeDecoded(decoded);
 
-      setSessionData(normalized);
-      setIsProcessing(false);
-    } catch (e) {
-      console.error("Failed to parse session data:", e);
-      setError('无效的分享链接：数据解析失败');
-      setIsProcessing(false);
-    }
+        if (cancelled) return;
+        setSessionData(normalized);
+        setIsProcessing(false);
+      } catch (e) {
+        console.error("Failed to parse session data:", e);
+        if (cancelled) return;
+        setError('无效的分享链接：数据解析失败');
+        setIsProcessing(false);
+      }
+    };
+
+    run();
+    return () => {
+      cancelled = true;
+    };
   }, [searchParams]);
 
   const handleJoin = async () => {
