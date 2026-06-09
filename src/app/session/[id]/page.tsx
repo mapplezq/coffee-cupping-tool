@@ -380,9 +380,16 @@ export default function SessionDetailPage() {
 
     const userAgent = typeof navigator !== 'undefined' ? navigator.userAgent : '';
     const isWeChat = /MicroMessenger/i.test(userAgent);
-    if (mode === 'handoff' || isWeChat) {
+    if (mode === 'handoff') {
       navigator.clipboard.writeText(url);
-      alert(mode === 'handoff' ? '交接链接已复制！直接粘贴发给同事即可。' : '链接已复制！直接粘贴发送即可。');
+      alert('交接链接已复制！直接粘贴发给同事即可。');
+      return;
+    }
+
+    if (isWeChat) {
+      const compact = `☕️ 杯测邀请：${session.name}（${formatDate(session.cuppingDate)}，${session.samples.length}支，${session.blindMode ? '盲测' : '公开'}）\n${url}`;
+      navigator.clipboard.writeText(compact);
+      alert('邀请信息+链接已复制！直接粘贴发送即可。');
       return;
     }
 
