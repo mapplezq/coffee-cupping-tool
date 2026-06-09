@@ -216,7 +216,25 @@ export default function SessionDetailPage() {
       setHandoffUrl(`${baseUrl}/session/join?data=${dataParam}&mode=handoff`);
     };
 
+    const applyShortUrls = async (dataParam: string) => {
+      try {
+        const res = await fetch('/api/shortlink', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ data: dataParam }),
+        });
+        const json = await res.json();
+        if (!res.ok) return;
+        const code = json?.code;
+        if (typeof code !== 'string' || code.length === 0) return;
+        setShareUrl(`${baseUrl}/s/${code}?mode=join`);
+        setHandoffUrl(`${baseUrl}/s/${code}?mode=handoff`);
+      } catch (_) {
+      }
+    };
+
     applyUrls(lz);
+    applyShortUrls(lz);
     let cancelled = false;
     const run = async () => {
       try {
@@ -232,6 +250,7 @@ export default function SessionDetailPage() {
         if (cancelled) return;
         if (gz.length < lz.length) {
           applyUrls(gz);
+          applyShortUrls(gz);
         }
       } catch (_) {
       }

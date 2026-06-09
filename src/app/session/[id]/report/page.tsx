@@ -337,6 +337,23 @@ export default function ReportPage({ params }: ReportPageProps) {
     const applyUrl = (dataParam: string) => setShareReportUrl(`${baseUrl}/session/join?data=${dataParam}&to=report`);
     applyUrl(lz);
 
+    const applyShortUrl = async (dataParam: string) => {
+      try {
+        const res = await fetch('/api/shortlink', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ data: dataParam }),
+        });
+        const json = await res.json();
+        if (!res.ok) return;
+        const code = json?.code;
+        if (typeof code !== 'string' || code.length === 0) return;
+        setShareReportUrl(`${baseUrl}/s/${code}?to=report`);
+      } catch (_) {
+      }
+    };
+    applyShortUrl(lz);
+
     let cancelled = false;
     const run = async () => {
       try {
@@ -350,7 +367,10 @@ export default function ReportPage({ params }: ReportPageProps) {
         const gz = result?.data;
         if (typeof gz !== 'string' || !gz.startsWith('gz:')) return;
         if (cancelled) return;
-        if (gz.length < lz.length) applyUrl(gz);
+        if (gz.length < lz.length) {
+          applyUrl(gz);
+          applyShortUrl(gz);
+        }
       } catch (_) {
       }
     };

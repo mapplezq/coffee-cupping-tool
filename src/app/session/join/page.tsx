@@ -20,10 +20,13 @@ function JoinSessionContent() {
 
   useEffect(() => {
     const data = searchParams.get('data');
+    const code = searchParams.get('code');
     if (!data) {
-      setError('无效的分享链接：缺少数据');
-      setIsProcessing(false);
-      return;
+      if (!code) {
+        setError('无效的分享链接：缺少数据');
+        setIsProcessing(false);
+        return;
+      }
     }
 
     const base64UrlToBytes = (value: string) => {
@@ -75,10 +78,22 @@ function JoinSessionContent() {
     const run = async () => {
       try {
         let jsonString = '';
+        let rawData = data;
 
-        if (data.startsWith('gz:')) {
+        if (!rawData && code) {
+          const res = await fetch(`/api/shortlink?code=${encodeURIComponent(code)}`);
+          const json = await res.json();
+          if (!res.ok) throw new Error(json?.error || 'Shortlink not found');
+          rawData = json?.data || '';
+        }
+
+        if (!rawData) {
+          throw new Error('Missing data');
+        }
+
+        if (rawData.startsWith('gz:')) {
           if (typeof (window as any).DecompressionStream !== 'undefined') {
-            const raw = data.slice(3);
+            const raw = rawData.slice(3);
             const bytes = base64UrlToBytes(raw);
             const ds = new (window as any).DecompressionStream('gzip');
             const decompressedBuffer = await new Response(
@@ -89,7 +104,7 @@ function JoinSessionContent() {
             const response = await fetch('/api/share', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ op: 'decode', data }),
+              body: JSON.stringify({ op: 'decode', data: rawData }),
             });
             const result = await response.json();
             if (!response.ok) {
@@ -98,10 +113,10 @@ function JoinSessionContent() {
             jsonString = result?.jsonString || '';
           }
         } else {
-          jsonString = LZString.decompressFromEncodedURIComponent(data) || '';
+          jsonString = LZString.decompressFromEncodedURIComponent(rawData) || '';
           if (!jsonString) {
             try {
-              jsonString = decodeURIComponent(atob(data));
+              jsonString = decodeURIComponent(atob(rawData));
             } catch (_) {
             }
           }
