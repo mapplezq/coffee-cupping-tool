@@ -30,6 +30,7 @@ export default function ReportPage({ params }: ReportPageProps) {
   const [reportError, setReportError] = useState<string>('');
   const [isShareOpen, setIsShareOpen] = useState(false);
   const [shareCopied, setShareCopied] = useState(false);
+  const [shareReportUrl, setShareReportUrl] = useState('');
 
   useEffect(() => {
     const foundSession = sessions.find(s => s.id === id);
@@ -315,22 +316,49 @@ export default function ReportPage({ params }: ReportPageProps) {
   const activeScoreItem = activeSample ? reportData.averageScores.find((x: any) => x.name === activeSample.name) : null;
   const activeScore = activeScoreItem ? activeScoreItem.score : 0;
 
-  const shareReportUrl = typeof window !== 'undefined'
-    ? (() => {
-        const shareData = {
-          v: 2,
-          n: session.name,
-          t: session.template,
-          d: session.cuppingDate,
-          b: session.blindMode,
-          l: session.blindLabelType,
-          s: (session.samples || []).map((s: any) => [s.name, s.origin, s.process, s.type] as const),
-        };
-        const jsonString = JSON.stringify(shareData);
-        const compressed = LZString.compressToEncodedURIComponent(jsonString);
-        return `${window.location.origin}/session/join?data=${compressed}&to=report`;
-      })()
-    : '';
+  useEffect(() => {
+    if (!session) return;
+    if (typeof window === 'undefined') return;
+
+    const shareData = {
+      v: 2,
+      n: session.name,
+      t: session.template,
+      d: session.cuppingDate,
+      b: session.blindMode,
+      l: session.blindLabelType,
+      s: (session.samples || []).map((s: any) => [s.name, s.origin, s.process, s.type] as const),
+    };
+
+    const baseUrl = window.location.origin;
+    const jsonString = JSON.stringify(shareData);
+    const lz = LZString.compressToEncodedURIComponent(jsonString);
+    const applyUrl = (dataParam: string) => setShareReportUrl(`${baseUrl}/session/join?data=${dataParam}&to=report`);
+    applyUrl(lz);
+
+    let cancelled = false;
+    const run = async () => {
+      try {
+        const response = await fetch('/api/share', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ op: 'encode', jsonString }),
+        });
+        const result = await response.json();
+        if (!response.ok) return;
+        const gz = result?.data;
+        if (typeof gz !== 'string' || !gz.startsWith('gz:')) return;
+        if (cancelled) return;
+        if (gz.length < lz.length) applyUrl(gz);
+      } catch (_) {
+      }
+    };
+
+    run();
+    return () => {
+      cancelled = true;
+    };
+  }, [session]);
 
   const userAgent = typeof navigator !== 'undefined' ? navigator.userAgent : '';
   const isWeChat = /MicroMessenger/i.test(userAgent);

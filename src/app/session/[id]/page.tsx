@@ -190,15 +190,6 @@ export default function SessionDetailPage() {
     if (!session) return;
     if (typeof window === 'undefined') return;
 
-    const bytesToBase64Url = (bytes: Uint8Array) => {
-      let binary = '';
-      const chunkSize = 0x8000;
-      for (let i = 0; i < bytes.length; i += chunkSize) {
-        binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize));
-      }
-      return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
-    };
-
     const buildShareData = (lite: boolean) => ({
       v: 2,
       n: session.name,
@@ -222,18 +213,18 @@ export default function SessionDetailPage() {
     };
 
     applyUrls(lz);
-
-    const supportsGzip = typeof (window as any).CompressionStream !== 'undefined';
-    if (!supportsGzip) return;
-
     let cancelled = false;
     const run = async () => {
       try {
-        const cs = new (window as any).CompressionStream('gzip');
-        const compressedBuffer = await new Response(
-          new Blob([jsonString]).stream().pipeThrough(cs)
-        ).arrayBuffer();
-        const gz = `gz:${bytesToBase64Url(new Uint8Array(compressedBuffer))}`;
+        const response = await fetch('/api/share', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ op: 'encode', jsonString }),
+        });
+        const result = await response.json();
+        if (!response.ok) return;
+        const gz = result?.data;
+        if (typeof gz !== 'string' || !gz.startsWith('gz:')) return;
         if (cancelled) return;
         if (gz.length < lz.length) {
           applyUrls(gz);
