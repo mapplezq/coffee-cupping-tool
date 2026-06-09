@@ -403,20 +403,22 @@ export default function SessionDetailPage() {
 
     const userAgent = typeof navigator !== 'undefined' ? navigator.userAgent : '';
     const isWeChat = /MicroMessenger/i.test(userAgent);
-    if (mode === 'handoff') {
+
+    const shouldFallbackToUrlOnly = isWeChat && url.length > 350;
+    if (shouldFallbackToUrlOnly) {
       navigator.clipboard.writeText(url);
-      alert('交接链接已复制！直接粘贴发给同事即可。');
+      alert(mode === 'handoff' ? '交接链接已复制！直接粘贴发给同事即可。' : '链接已复制！直接粘贴发送即可。');
       return;
     }
 
-    if (isWeChat) {
-      const compact = `☕️ 杯测邀请：${session.name}（${formatDate(session.cuppingDate)}，${session.samples.length}支，${session.blindMode ? '盲测' : '公开'}）\n${url}`;
-      navigator.clipboard.writeText(compact);
-      alert('邀请信息+链接已复制！直接粘贴发送即可。');
+    if (mode === 'handoff') {
+      const text = `☕️ 杯测活动交接\n\n📅 主题：${session.name}\n🕒 日期：${formatDate(session.cuppingDate)}\n🧪 样品数：${session.samples.length}支\n${session.blindMode ? '🕶️ 模式：盲测' : '📝 模式：公开'}\n\n👇 点击链接接手该活动：\n${url}`;
+      navigator.clipboard.writeText(text);
+      alert('交接文案已复制！可直接粘贴发送给同事。');
       return;
     }
 
-    const text = `☕️ 邀请您参加杯测会话\n\n📅 主题：${session.name}\n🕒 日期：${formatDate(session.cuppingDate)}\n🧪 样品数：${session.samples.length}支\n${session.blindMode ? '🕶️ 模式：盲测' : '📝 模式：公开'}\n\n👇 点击链接或保存二维码加入：\n${url}`;
+    const text = `☕️ 邀请您参加杯测会话\n\n📅 主题：${session.name}\n🕒 日期：${formatDate(session.cuppingDate)}\n🧪 样品数：${session.samples.length}支\n${session.blindMode ? '🕶️ 模式：盲测' : '📝 模式：公开'}\n\n👇 点击链接加入：\n${url}`;
     navigator.clipboard.writeText(text);
     alert('分享文案已复制！可直接粘贴发送给好友。');
   };
