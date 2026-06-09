@@ -40,6 +40,45 @@ export default function SessionDetailPage() {
 
   const qrInlineRef = useRef<HTMLDivElement | null>(null);
   const qrZoomRef = useRef<HTMLDivElement | null>(null);
+  const lastTapAtRef = useRef(0);
+
+  const withTapGuard = (fn: () => void) => (e: any) => {
+    e?.preventDefault?.();
+    e?.stopPropagation?.();
+    const t = Date.now();
+    if (t - lastTapAtRef.current < 350) return;
+    lastTapAtRef.current = t;
+    fn();
+  };
+
+  const openQrZoom = () => {
+    setQrPngUrl('');
+    const canvas = qrInlineRef.current?.querySelector('canvas') || qrZoomRef.current?.querySelector('canvas');
+    if (canvas) {
+      try {
+        setQrPngUrl(canvas.toDataURL('image/png'));
+      } catch (_) {
+      }
+    }
+    setIsQrZoomOpen(true);
+  };
+
+  useEffect(() => {
+    if (!isQrZoomOpen) return;
+    if (!shareUrl) return;
+    if (qrPngUrl) return;
+    const id = window.setTimeout(() => {
+      const canvas = qrZoomRef.current?.querySelector('canvas') || qrInlineRef.current?.querySelector('canvas');
+      if (!canvas) return;
+      try {
+        setQrPngUrl(canvas.toDataURL('image/png'));
+      } catch (_) {
+      }
+    }, 60);
+    return () => {
+      window.clearTimeout(id);
+    };
+  }, [isQrZoomOpen, qrPngUrl, shareUrl]);
 
   const toggleNote = (sampleId: string) => {
     setExpandedNotes(prev => 
@@ -431,22 +470,6 @@ export default function SessionDetailPage() {
     alert(mode === 'handoff' ? '交接链接已复制！' : '链接已复制！');
   };
 
-  const handlePrepareQrImage = () => {
-    const canvas =
-      qrZoomRef.current?.querySelector('canvas') ||
-      qrInlineRef.current?.querySelector('canvas');
-    if (!canvas) {
-      setIsQrZoomOpen(true);
-      return;
-    }
-    try {
-      const url = canvas.toDataURL('image/png');
-      setQrPngUrl(url);
-      setIsQrZoomOpen(true);
-    } catch (_) {
-      setIsQrZoomOpen(true);
-    }
-  };
   const getQrSize = (value: string) => {
     const len = value.length;
     if (len > 2000) return 360;
@@ -743,7 +766,8 @@ export default function SessionDetailPage() {
                       {shareUrl ? (
                         <button
                           type="button"
-                          onClick={() => setIsQrZoomOpen(true)}
+                          onClick={withTapGuard(openQrZoom)}
+                          onPointerUp={withTapGuard(openQrZoom)}
                           className="block"
                           aria-label="放大二维码"
                         >
@@ -772,7 +796,8 @@ export default function SessionDetailPage() {
                   </p>
                   <button
                     type="button"
-                    onClick={() => setIsQrZoomOpen(true)}
+                    onClick={withTapGuard(openQrZoom)}
+                    onPointerUp={withTapGuard(openQrZoom)}
                     className="w-full text-center text-xs text-amber-700 hover:text-amber-800"
                   >
                     放大二维码
@@ -804,15 +829,6 @@ export default function SessionDetailPage() {
                 </div>
                 <div className="w-full">
                   <button
-                    onClick={handlePrepareQrImage}
-                    className="w-full flex items-center justify-center gap-2 py-3 px-4 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 rounded-xl font-medium transition-colors shadow-sm"
-                  >
-                    <Star className="w-4 h-4" />
-                    生成二维码图片
-                  </button>
-                </div>
-                <div className="w-full">
-                  <button
                     onClick={() => handleCopyLink('handoff')}
                     className="w-full flex items-center justify-center gap-2 py-3 px-4 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 rounded-xl font-medium transition-colors shadow-sm"
                   >
@@ -820,6 +836,45 @@ export default function SessionDetailPage() {
                     交接给同事
                   </button>
                 </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {isQrZoomOpen && (
+          <div className="fixed inset-0 bg-black/70 z-[60] flex items-center justify-center p-4">
+            <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg p-6">
+              <div className="flex items-center justify-between mb-4">
+                <div className="text-sm font-semibold text-gray-900">放大二维码</div>
+                <button onClick={() => setIsQrZoomOpen(false)} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
+                  <X className="w-5 h-5 text-gray-400" />
+                </button>
+              </div>
+              <div className="flex justify-center">
+                <div className="p-2 bg-white rounded-lg border border-gray-200">
+                  {qrPngUrl ? (
+                    <img src={qrPngUrl} alt="二维码" className="w-[420px] h-[420px]" />
+                  ) : shareUrl ? (
+                    <div ref={qrZoomRef}>
+                      <QRCodeCanvas
+                        value={shareUrl}
+                        size={420}
+                        includeMargin
+                        level="L"
+                        bgColor="#ffffff"
+                        fgColor="#000000"
+                        style={{ imageRendering: 'pixelated' } as any}
+                      />
+                    </div>
+                  ) : (
+                    <div className="w-[420px] h-[420px] flex items-center justify-center text-sm text-gray-400">
+                      正在生成二维码...
+                    </div>
+                  )}
+                </div>
+              </div>
+              <div className="mt-4 text-xs text-gray-500 text-center">
+                微信里可长按图片识别二维码；建议将二维码保持在屏幕正中，手机与屏幕距离 15–25cm，避免屏幕反光。
               </div>
             </div>
           </div>
@@ -1268,7 +1323,8 @@ export default function SessionDetailPage() {
                     {shareUrl ? (
                       <button
                         type="button"
-                        onClick={() => setIsQrZoomOpen(true)}
+                        onClick={withTapGuard(openQrZoom)}
+                        onPointerUp={withTapGuard(openQrZoom)}
                         className="block"
                         aria-label="放大二维码"
                       >
@@ -1297,7 +1353,8 @@ export default function SessionDetailPage() {
                 </p>
                 <button
                   type="button"
-                  onClick={() => setIsQrZoomOpen(true)}
+                  onClick={withTapGuard(openQrZoom)}
+                  onPointerUp={withTapGuard(openQrZoom)}
                   className="w-full text-center text-xs"
                   style={{ color: '#b45309' }}
                 >
@@ -1331,15 +1388,6 @@ export default function SessionDetailPage() {
               </div>
               <div className="w-full">
                 <button
-                  onClick={handlePrepareQrImage}
-                  className="w-full flex items-center justify-center gap-2 py-3 px-4 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 rounded-xl font-medium transition-colors shadow-sm"
-                >
-                  <Star className="w-4 h-4" />
-                  生成二维码图片
-                </button>
-              </div>
-              <div className="w-full">
-                <button
                   onClick={() => handleCopyLink('handoff')}
                   className="w-full flex items-center justify-center gap-2 py-3 px-4 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 rounded-xl font-medium transition-colors shadow-sm"
                 >
@@ -1353,7 +1401,7 @@ export default function SessionDetailPage() {
       )}
 
       {isQrZoomOpen && (
-        <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-black/70 z-[60] flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg p-6">
             <div className="flex items-center justify-between mb-4">
               <div className="text-sm font-semibold text-gray-900">放大二维码</div>
