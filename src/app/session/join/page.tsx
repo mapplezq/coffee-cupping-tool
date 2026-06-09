@@ -82,8 +82,16 @@ function JoinSessionContent() {
 
         if (!rawData && code) {
           const res = await fetch(`/api/shortlink?code=${encodeURIComponent(code)}`);
-          const json = await res.json();
-          if (!res.ok) throw new Error(json?.error || 'Shortlink not found');
+          const json = await res.json().catch(() => ({}));
+          if (!res.ok) {
+            if (res.status === 410) {
+              throw new Error('SHORTLINK_EXPIRED');
+            }
+            if (res.status === 404) {
+              throw new Error('SHORTLINK_NOT_FOUND');
+            }
+            throw new Error(json?.error || 'Shortlink not found');
+          }
           rawData = json?.data || '';
         }
 
@@ -132,10 +140,17 @@ function JoinSessionContent() {
         if (cancelled) return;
         setSessionData(normalized);
         setIsProcessing(false);
-      } catch (e) {
+      } catch (e: any) {
         console.error("Failed to parse session data:", e);
         if (cancelled) return;
-        setError('无效的分享链接：数据解析失败');
+        const msg = typeof e?.message === 'string' ? e.message : '';
+        if (msg === 'SHORTLINK_EXPIRED') {
+          setError('该短链接已过期，请让发起人重新生成邀请链接。');
+        } else if (msg === 'SHORTLINK_NOT_FOUND') {
+          setError('该短链接不存在或已失效，请让发起人重新生成邀请链接。');
+        } else {
+          setError('无效的分享链接：数据解析失败');
+        }
         setIsProcessing(false);
       }
     };

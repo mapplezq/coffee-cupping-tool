@@ -11,7 +11,7 @@ const toBase62 = (bytes: Uint8Array) => {
 };
 
 const now = () => Date.now();
-const TTL_MS = 7 * 24 * 60 * 60 * 1000;
+const TTL_MS = 30 * 24 * 60 * 60 * 1000;
 const sleep = (ms: number) => new Promise<void>(resolve => setTimeout(resolve, ms));
 const toText = (value: unknown) => {
   if (typeof value === 'string') return value;
