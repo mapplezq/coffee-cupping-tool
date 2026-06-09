@@ -27,6 +27,7 @@ export default function SessionDetailPage() {
   const [qrPngUrl, setQrPngUrl] = useState('');
   const [shareUrl, setShareUrl] = useState('');
   const [handoffUrl, setHandoffUrl] = useState('');
+  const [isPreparingShareLink, setIsPreparingShareLink] = useState(false);
   const [dirtySampleId, setDirtySampleId] = useState<string | null>(null);
   const [showBlindMap, setShowBlindMap] = useState(false);
 
@@ -232,6 +233,12 @@ export default function SessionDetailPage() {
   useEffect(() => {
     if (!session) return;
     if (typeof window === 'undefined') return;
+    let cancelled = false;
+
+    setIsPreparingShareLink(true);
+    setShareUrl('');
+    setHandoffUrl('');
+    setQrPngUrl('');
 
     const buildShareData = (lite: boolean) => ({
       v: 2,
@@ -250,12 +257,19 @@ export default function SessionDetailPage() {
     const jsonString = lzFull.length > 1200 ? JSON.stringify(buildShareData(true)) : jsonFull;
     const lz = lzFull.length > 1200 ? LZString.compressToEncodedURIComponent(jsonString) : lzFull;
 
-    const applyUrls = (dataParam: string) => {
-      setShareUrl(`${baseUrl}/session/join?data=${dataParam}&mode=join`);
-      setHandoffUrl(`${baseUrl}/session/join?data=${dataParam}&mode=handoff`);
+    const setUrls = (dataParam: string, code?: string) => {
+      if (cancelled) return;
+      if (typeof code === 'string' && code.length > 0) {
+        setShareUrl(`${baseUrl}/s/${code}?mode=join`);
+        setHandoffUrl(`${baseUrl}/s/${code}?mode=handoff`);
+      } else {
+        setShareUrl(`${baseUrl}/session/join?data=${dataParam}&mode=join`);
+        setHandoffUrl(`${baseUrl}/session/join?data=${dataParam}&mode=handoff`);
+      }
+      setIsPreparingShareLink(false);
     };
 
-    const applyShortUrls = async (dataParam: string) => {
+    const createShortCode = async (dataParam: string) => {
       try {
         const res = await fetch('/api/shortlink', {
           method: 'POST',
@@ -263,19 +277,17 @@ export default function SessionDetailPage() {
           body: JSON.stringify({ data: dataParam }),
         });
         const json = await res.json();
-        if (!res.ok) return;
+        if (!res.ok) return '';
         const code = json?.code;
-        if (typeof code !== 'string' || code.length === 0) return;
-        setShareUrl(`${baseUrl}/s/${code}?mode=join`);
-        setHandoffUrl(`${baseUrl}/s/${code}?mode=handoff`);
+        if (typeof code !== 'string' || code.length === 0) return '';
+        return code;
       } catch (_) {
+        return '';
       }
     };
 
-    applyUrls(lz);
-    applyShortUrls(lz);
-    let cancelled = false;
     const run = async () => {
+      let bestDataParam = lz;
       try {
         const response = await fetch('/api/share', {
           method: 'POST',
@@ -288,11 +300,21 @@ export default function SessionDetailPage() {
         if (typeof gz !== 'string' || !gz.startsWith('gz:')) return;
         if (cancelled) return;
         if (gz.length < lz.length) {
-          applyUrls(gz);
-          applyShortUrls(gz);
+          bestDataParam = gz;
         }
       } catch (_) {
       }
+
+      try {
+        const shortCode = await createShortCode(bestDataParam);
+        if (shortCode) {
+          setUrls(bestDataParam, shortCode);
+          return;
+        }
+      } catch (_) {
+      }
+
+      setUrls(bestDataParam);
     };
     run();
     return () => {
@@ -438,7 +460,10 @@ export default function SessionDetailPage() {
   const handleCopyLink = (mode: 'join' | 'handoff' = 'join') => {
     if (!session) return;
     const url = mode === 'handoff' ? handoffUrl : shareUrl;
-    if (!url) return;
+    if (!url) {
+      alert('分享链接仍在生成，请稍候再试。');
+      return;
+    }
 
     const userAgent = typeof navigator !== 'undefined' ? navigator.userAgent : '';
     const isWeChat = /MicroMessenger/i.test(userAgent);
@@ -465,7 +490,10 @@ export default function SessionDetailPage() {
   const handleCopyUrlOnly = (mode: 'join' | 'handoff' = 'join') => {
     if (!session) return;
     const url = mode === 'handoff' ? handoffUrl : shareUrl;
-    if (!url) return;
+    if (!url) {
+      alert('分享链接仍在生成，请稍候再试。');
+      return;
+    }
     navigator.clipboard.writeText(url);
     alert(mode === 'handoff' ? '交接链接已复制！' : '链接已复制！');
   };
@@ -785,7 +813,7 @@ export default function SessionDetailPage() {
                         </button>
                       ) : (
                         <div className="w-[260px] h-[260px] flex items-center justify-center text-xs text-gray-400">
-                          正在生成二维码...
+                          正在生成稳定分享链接...
                         </div>
                       )}
                     </div>
@@ -798,7 +826,8 @@ export default function SessionDetailPage() {
                     type="button"
                     onClick={withTapGuard(openQrZoom)}
                     onPointerUp={withTapGuard(openQrZoom)}
-                    className="w-full text-center text-xs text-amber-700 hover:text-amber-800"
+                    disabled={!shareUrl}
+                    className="w-full text-center text-xs text-amber-700 hover:text-amber-800 disabled:text-gray-300"
                   >
                     放大二维码
                   </button>
@@ -812,10 +841,11 @@ export default function SessionDetailPage() {
                 <div className="w-full">
                   <button
                     onClick={() => handleCopyLink('join')}
-                    className="w-full flex items-center justify-center gap-2 py-3 px-4 bg-amber-600 hover:bg-amber-700 text-white rounded-xl font-medium transition-colors shadow-sm"
+                  disabled={!shareUrl}
+                  className="w-full flex items-center justify-center gap-2 py-3 px-4 bg-amber-600 hover:bg-amber-700 text-white rounded-xl font-medium transition-colors shadow-sm disabled:opacity-50 disabled:hover:bg-amber-600"
                   >
                     <Copy className="w-4 h-4" />
-                    复制链接
+                  {isPreparingShareLink ? '正在生成链接...' : '复制链接'}
                   </button>
                 </div>
                 <div className="w-full">
@@ -1342,7 +1372,7 @@ export default function SessionDetailPage() {
                       </button>
                     ) : (
                       <div className="w-[260px] h-[260px] flex items-center justify-center text-xs" style={{ color: '#9ca3af' }}>
-                        正在生成二维码...
+                        正在生成稳定分享链接...
                       </div>
                     )}
                   </div>
@@ -1355,8 +1385,9 @@ export default function SessionDetailPage() {
                   type="button"
                   onClick={withTapGuard(openQrZoom)}
                   onPointerUp={withTapGuard(openQrZoom)}
+                  disabled={!shareUrl}
                   className="w-full text-center text-xs"
-                  style={{ color: '#b45309' }}
+                  style={{ color: shareUrl ? '#b45309' : '#d1d5db' }}
                 >
                   放大二维码
                 </button>
@@ -1371,16 +1402,18 @@ export default function SessionDetailPage() {
               <div className="w-full">
                 <button
                   onClick={() => handleCopyLink('join')}
-                  className="w-full flex items-center justify-center gap-2 py-3 px-4 bg-amber-600 hover:bg-amber-700 text-white rounded-xl font-medium transition-colors shadow-sm"
+                  disabled={!shareUrl}
+                  className="w-full flex items-center justify-center gap-2 py-3 px-4 bg-amber-600 hover:bg-amber-700 text-white rounded-xl font-medium transition-colors shadow-sm disabled:opacity-50 disabled:hover:bg-amber-600"
                 >
                   <Copy className="w-4 h-4" />
-                  复制文案
+                  {isPreparingShareLink ? '正在生成链接...' : '复制文案'}
                 </button>
               </div>
               <div className="w-full">
                 <button
                   onClick={() => handleCopyUrlOnly('join')}
-                  className="w-full flex items-center justify-center gap-2 py-3 px-4 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 rounded-xl font-medium transition-colors shadow-sm"
+                  disabled={!shareUrl}
+                  className="w-full flex items-center justify-center gap-2 py-3 px-4 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 rounded-xl font-medium transition-colors shadow-sm disabled:opacity-50 disabled:hover:bg-white"
                 >
                   <Copy className="w-4 h-4" />
                   仅复制链接
@@ -1389,7 +1422,8 @@ export default function SessionDetailPage() {
               <div className="w-full">
                 <button
                   onClick={() => handleCopyLink('handoff')}
-                  className="w-full flex items-center justify-center gap-2 py-3 px-4 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 rounded-xl font-medium transition-colors shadow-sm"
+                  disabled={!handoffUrl}
+                  className="w-full flex items-center justify-center gap-2 py-3 px-4 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 rounded-xl font-medium transition-colors shadow-sm disabled:opacity-50 disabled:hover:bg-white"
                 >
                   <ListChecks className="w-4 h-4" />
                   交接给同事
