@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useState, use } from 'react';
+import { useEffect, useRef, useState, use } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSessions } from '@/lib/context';
 import { ArrowLeft, Download, Share2, Star, Copy, X } from 'lucide-react';
 import Link from 'next/link';
-import { QRCodeSVG } from 'qrcode.react';
+import { QRCodeCanvas } from 'qrcode.react';
 import LZString from 'lz-string';
 import {
   Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
@@ -31,6 +31,7 @@ export default function ReportPage({ params }: ReportPageProps) {
   const [isShareOpen, setIsShareOpen] = useState(false);
   const [shareCopied, setShareCopied] = useState(false);
   const [shareReportUrl, setShareReportUrl] = useState('');
+  const qrRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     const foundSession = sessions.find(s => s.id === id);
@@ -403,6 +404,29 @@ export default function ReportPage({ params }: ReportPageProps) {
     }
   };
 
+  const handleCopyUrlOnly = async () => {
+    try {
+      await navigator.clipboard.writeText(shareReportUrl);
+      setShareCopied(true);
+      setTimeout(() => setShareCopied(false), 2000);
+    } catch (_) {
+      window.prompt('复制下面链接分享给他人：', shareReportUrl);
+    }
+  };
+
+  const handlePrepareQrImage = () => {
+    const canvas = qrRef.current?.querySelector('canvas');
+    if (!canvas) return;
+    try {
+      const url = canvas.toDataURL('image/png');
+      const win = window.open(url, '_blank');
+      if (!win) {
+        window.location.href = url;
+      }
+    } catch (_) {
+    }
+  };
+
   return (
     <div className="min-h-screen bg-neutral-50 pb-20">
       {/* Header */}
@@ -636,15 +660,17 @@ export default function ReportPage({ params }: ReportPageProps) {
 
                 <div className="flex justify-center py-2">
                   <div className="p-2 bg-white rounded-lg border border-gray-100">
-                    <QRCodeSVG
-                      value={shareReportUrl}
-                      size={qrSize}
-                      includeMargin
-                      level="L"
-                      bgColor="#ffffff"
-                      fgColor="#000000"
-                      style={{ shapeRendering: 'crispEdges' } as any}
-                    />
+                    <div ref={qrRef}>
+                      <QRCodeCanvas
+                        value={shareReportUrl}
+                        size={qrSize}
+                        includeMargin
+                        level="L"
+                        bgColor="#ffffff"
+                        fgColor="#000000"
+                        style={{ imageRendering: 'pixelated' } as any}
+                      />
+                    </div>
                   </div>
                 </div>
 
@@ -658,11 +684,25 @@ export default function ReportPage({ params }: ReportPageProps) {
                   </div>
                 )}
                 <button
+                  onClick={handleCopyUrlOnly}
+                  className="w-full flex items-center justify-center gap-2 py-3 px-4 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 rounded-xl font-medium transition-colors shadow-sm"
+                >
+                  <Copy className="w-4 h-4" />
+                  仅复制链接
+                </button>
+                <button
                   onClick={handleCopy}
                   className="w-full flex items-center justify-center gap-2 py-3 px-4 bg-amber-600 hover:bg-amber-700 text-white rounded-xl font-medium transition-colors shadow-sm"
                 >
                   <Copy className="w-4 h-4" />
                   {shareCopied ? '已复制' : '复制文案'}
+                </button>
+                <button
+                  onClick={handlePrepareQrImage}
+                  className="w-full flex items-center justify-center gap-2 py-3 px-4 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 rounded-xl font-medium transition-colors shadow-sm"
+                >
+                  <Download className="w-4 h-4" />
+                  打开二维码图片
                 </button>
                 {!isWeChat && typeof navigator !== 'undefined' && (navigator as any).share && (
                   <button

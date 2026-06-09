@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useSessions } from '@/lib/context';
 import { SessionWithSamples, CuppingScore } from '@/lib/types';
@@ -24,6 +24,7 @@ export default function SessionDetailPage() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isShareOpen, setIsShareOpen] = useState(false);
   const [isQrZoomOpen, setIsQrZoomOpen] = useState(false);
+  const [qrPngUrl, setQrPngUrl] = useState('');
   const [shareUrl, setShareUrl] = useState('');
   const [handoffUrl, setHandoffUrl] = useState('');
   const [dirtySampleId, setDirtySampleId] = useState<string | null>(null);
@@ -36,6 +37,9 @@ export default function SessionDetailPage() {
   const [expandedNotes, setExpandedNotes] = useState<string[]>([]);
   const [noteDrafts, setNoteDrafts] = useState<Record<string, string>>({});
   const [isComposing, setIsComposing] = useState(false);
+
+  const qrInlineRef = useRef<HTMLDivElement | null>(null);
+  const qrZoomRef = useRef<HTMLDivElement | null>(null);
 
   const toggleNote = (sampleId: string) => {
     setExpandedNotes(prev => 
@@ -397,6 +401,31 @@ export default function SessionDetailPage() {
     navigator.clipboard.writeText(text);
     alert('分享文案已复制！可直接粘贴发送给好友。');
   };
+
+  const handleCopyUrlOnly = (mode: 'join' | 'handoff' = 'join') => {
+    if (!session) return;
+    const url = mode === 'handoff' ? handoffUrl : shareUrl;
+    if (!url) return;
+    navigator.clipboard.writeText(url);
+    alert(mode === 'handoff' ? '交接链接已复制！' : '链接已复制！');
+  };
+
+  const handlePrepareQrImage = () => {
+    const canvas =
+      qrZoomRef.current?.querySelector('canvas') ||
+      qrInlineRef.current?.querySelector('canvas');
+    if (!canvas) {
+      setIsQrZoomOpen(true);
+      return;
+    }
+    try {
+      const url = canvas.toDataURL('image/png');
+      setQrPngUrl(url);
+      setIsQrZoomOpen(true);
+    } catch (_) {
+      setIsQrZoomOpen(true);
+    }
+  };
   const getQrSize = (value: string) => {
     const len = value.length;
     if (len > 2000) return 360;
@@ -697,6 +726,7 @@ export default function SessionDetailPage() {
                           className="block"
                           aria-label="放大二维码"
                         >
+                          <div ref={qrInlineRef}>
                           <QRCodeCanvas
                             value={shareUrl}
                             size={qrSize}
@@ -706,6 +736,7 @@ export default function SessionDetailPage() {
                             fgColor="#000000"
                             style={{ imageRendering: 'pixelated' } as any}
                           />
+                          </div>
                         </button>
                       ) : (
                         <div className="w-[260px] h-[260px] flex items-center justify-center text-xs text-gray-400">
@@ -739,6 +770,24 @@ export default function SessionDetailPage() {
                   >
                     <Copy className="w-4 h-4" />
                     复制链接
+                  </button>
+                </div>
+                <div className="w-full">
+                  <button
+                    onClick={() => handleCopyUrlOnly('join')}
+                    className="w-full flex items-center justify-center gap-2 py-3 px-4 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 rounded-xl font-medium transition-colors shadow-sm"
+                  >
+                    <Copy className="w-4 h-4" />
+                    仅复制链接
+                  </button>
+                </div>
+                <div className="w-full">
+                  <button
+                    onClick={handlePrepareQrImage}
+                    className="w-full flex items-center justify-center gap-2 py-3 px-4 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 rounded-xl font-medium transition-colors shadow-sm"
+                  >
+                    <Star className="w-4 h-4" />
+                    生成二维码图片
                   </button>
                 </div>
                 <div className="w-full">
@@ -1202,6 +1251,7 @@ export default function SessionDetailPage() {
                         className="block"
                         aria-label="放大二维码"
                       >
+                        <div ref={qrInlineRef}>
                         <QRCodeCanvas
                           value={shareUrl}
                           size={qrSize}
@@ -1211,6 +1261,7 @@ export default function SessionDetailPage() {
                           fgColor="#000000"
                           style={{ imageRendering: 'pixelated' } as any}
                         />
+                        </div>
                       </button>
                     ) : (
                       <div className="w-[260px] h-[260px] flex items-center justify-center text-xs" style={{ color: '#9ca3af' }}>
@@ -1250,6 +1301,24 @@ export default function SessionDetailPage() {
               </div>
               <div className="w-full">
                 <button
+                  onClick={() => handleCopyUrlOnly('join')}
+                  className="w-full flex items-center justify-center gap-2 py-3 px-4 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 rounded-xl font-medium transition-colors shadow-sm"
+                >
+                  <Copy className="w-4 h-4" />
+                  仅复制链接
+                </button>
+              </div>
+              <div className="w-full">
+                <button
+                  onClick={handlePrepareQrImage}
+                  className="w-full flex items-center justify-center gap-2 py-3 px-4 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 rounded-xl font-medium transition-colors shadow-sm"
+                >
+                  <Star className="w-4 h-4" />
+                  生成二维码图片
+                </button>
+              </div>
+              <div className="w-full">
+                <button
                   onClick={() => handleCopyLink('handoff')}
                   className="w-full flex items-center justify-center gap-2 py-3 px-4 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 rounded-xl font-medium transition-colors shadow-sm"
                 >
@@ -1273,16 +1342,20 @@ export default function SessionDetailPage() {
             </div>
             <div className="flex justify-center">
               <div className="p-2 bg-white rounded-lg border border-gray-200">
-                {shareUrl ? (
-                  <QRCodeCanvas
-                    value={shareUrl}
-                    size={420}
-                    includeMargin
-                    level="L"
-                    bgColor="#ffffff"
-                    fgColor="#000000"
-                    style={{ imageRendering: 'pixelated' } as any}
-                  />
+                {qrPngUrl ? (
+                  <img src={qrPngUrl} alt="二维码" className="w-[420px] h-[420px]" />
+                ) : shareUrl ? (
+                  <div ref={qrZoomRef}>
+                    <QRCodeCanvas
+                      value={shareUrl}
+                      size={420}
+                      includeMargin
+                      level="L"
+                      bgColor="#ffffff"
+                      fgColor="#000000"
+                      style={{ imageRendering: 'pixelated' } as any}
+                    />
+                  </div>
                 ) : (
                   <div className="w-[420px] h-[420px] flex items-center justify-center text-sm text-gray-400">
                     正在生成二维码...
@@ -1291,7 +1364,7 @@ export default function SessionDetailPage() {
               </div>
             </div>
             <div className="mt-4 text-xs text-gray-500 text-center">
-              建议将二维码保持在屏幕正中，手机与屏幕距离 15–25cm，避免屏幕反光。
+              微信里可长按图片识别二维码；建议将二维码保持在屏幕正中，手机与屏幕距离 15–25cm，避免屏幕反光。
             </div>
           </div>
         </div>
